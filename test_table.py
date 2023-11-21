@@ -21,13 +21,45 @@ print(Date)
 conn = sqlite3.connect(r'DB/SAR.DB')
 cur = conn.cursor()
 # data = ['table']
-
+# ?asdsadasdsda
 docFIOStr = 'Иванов А.А.'
 time = ['9:30','10:00']
 cur.execute("""SELECT ID_appointment FROM Appointment 
 WHERE Time_appointment = (?) 
 AND (ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = (?))
 AND Day_appointment = (?));""",(time[1],docFIOStr,Date,))
-appointmentPac = cur.fetchall()
+outCurrentData = cur.fetchall()
+print(outCurrentData)
+# outCurrentDataStr = ''.join(outCurrentData[0][1])
+i=0
+outCurrentDataStr2 = int(''.join(map(str,outCurrentData[0])))
+print(outCurrentDataStr2)
 
-print(appointmentPac)
+# if outCurrentData > 0:
+#     print ('1')
+
+# else:
+#     print('2')
+
+
+# cur.execute("""SELECT Pat_FIO FROM Patient_card
+# WHERE (ID_Pat = (SELECT ID_Pat FROM Appointment
+# WHERE ID_appointment = (?)))""",(outCurrentDataStr2,))
+# a1 = cur.fetchall()
+# a2 = ''.join(a1[0])
+# print('Пациент', a2)
+
+
+
+# cur.execute("""SELECT appointment_status FROM Appointment                      
+# WHERE ID_appointment = (?)""",(outCurrentDataStr2,))
+# b1 = cur.fetchall()
+# b2 = int(''.join(map(str,b1[0])))
+# print('статус',b2)
+
+
+
+
+# outCurrentDataStr = ''.join(outCurrentData[0])
+
+# print(outCurrentDataStr)
