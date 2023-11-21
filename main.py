@@ -5,7 +5,8 @@ from PyQt5.QtWidgets import QTableWidgetItem
 import MainWindow_2 as MainWindow
 from functools import partial
 from PyQt5.QtCore import Qt
-
+import datetime
+from datetime import date
 conn = sqlite3.connect(r'DB/SAR.DB')
 cur = conn.cursor()
 # data = ['table']
@@ -16,7 +17,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)  
-        self.showFullScreen()
+        # self.showFullScreen()
+        self.label_date.setText(datetime.datetime.today().strftime('%d.%m.%Y')) 
+        print(self.label_date.text())
 
         cur.execute("SELECT Spec FROM 'Doc' ORDER BY ID_Doc ASC;")
         medSpec = cur.fetchall()
@@ -27,8 +30,18 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             medSpecStr = ''.join(medSpec[i])
             self.tableWidget.setItem(0, i, QtWidgets.QTableWidgetItem(medSpecStr))
             docFIOStr = ''.join(docFIO[i])
-            self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(docFIOStr)) # rowPosition
+            self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(docFIOStr))
 
+            
+            # cur.execute("SELECT ID_Pat, appointment_status FROM Appointment WHERE ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = (?));",(docFIOStr,))
+            # Ap_1 = cur.fetchall()
+            
+            item = QTableWidgetItem()
+                # if Ap_1A == 0:
+                #     item.setBackground(QtGui.QColor(255, 128, 128))
+                # # if Ap_1A[-1] == '1':
+                # #     item.setBackground(QtGui.QColor(200, 200, 200))
+                # self.tableWidget.setItem(j+2, i, item)
 
             cur.execute("SELECT ID_appointment FROM Appointment WHERE ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = (?));",(docFIOStr,))
             appointmentStatus = cur.fetchall()
@@ -55,8 +68,9 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 if appointmentTimeStr == '9:00':  
                     self.tableWidget.setItem(2, i, item)
                 elif appointmentTimeStr == '9:30':  
-
+                    item.setBackground(QtGui.QColor(255, 128, 128))
                     self.tableWidget.setItem(3, i, item)
+
                 elif appointmentTimeStr == '10:00':  
                     self.tableWidget.setItem(4, i, item)
                 elif appointmentTimeStr == '10:30': 
