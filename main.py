@@ -17,7 +17,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)  
-        # self.showFullScreen()
+        self.showFullScreen()
 
 
         # self.label_date.setText(datetime.datetime.today().strftime('%d.%m.%Y')) 
