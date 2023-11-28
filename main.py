@@ -6,26 +6,101 @@ import MainWindow_2 as MainWindow
 from functools import partial
 from PyQt5.QtCore import Qt
 import datetime
+import RegWindow as RegWindow
 from datetime import date
 conn = sqlite3.connect(r'DB/SAR.DB')
 cur = conn.cursor()
 # data = ['table']
 
+class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        # self.showFullScreen()
+        self.pushButtonStatus2.hide()
+        self.pushButtonStatus3.hide()
+        while True:
+            self.BoxDoc()
+            return
+        
+
+    def BoxDoc(self):
+        cur.execute("""SELECT Doc_FIO FROM Doc""",())
+        docFIO = cur.fetchall()
+        # ↓ переформотируем tuple в int/str
+        for i in range(len(docFIO)):
+            docFIOStr = ''.join(docFIO[i])
+            comboBoxDoc = self.comboBoxDoc
+            comboBoxDoc.addItem(docFIOStr)
+
+        self.pushButtonStatus2.setText('Выбрать дату')
+        self.pushButtonStatus.clicked.connect(self.BoxDate)
+
+    def BoxDate(self):
+
+        self.pushButtonStatus2.show()
+        self.pushButtonStatus.hide()
+
+        print ("мы делаем дело")
+        global currentDocFIOStr
+        currentDocFIOStr = str(self.comboBoxDoc.currentText()) 
+        
+        cur.execute("""SELECT Day_appointment FROM Appointment 
+                        WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
+                            WHERE Doc_FIO = (?)) 
+                        GROUP BY Day_appointment""",(currentDocFIOStr,))
+        DayAppointment = cur.fetchall()
+
+        for i in range(len(DayAppointment)):
+            DayAppointmentStr = ''.join(DayAppointment[i])
+            comboBoxDate = self.comboBoxDate
+            comboBoxDate.addItem(DayAppointmentStr)
+        
+        
+        self.pushButtonStatus2.clicked.connect(self.BoxTime)
+        return 0 
+
+    def BoxTime(self):
+        self.pushButtonStatus2.hide()
+        self.pushButtonStatus3.show()
+        global currentDateStr
+        currentDateStr = str(self.comboBoxDate.currentText()) 
+        self.pushButtonStatus.setText('Выбрать время')
+        cur.execute("""SELECT Time_appointment FROM Appointment 
+                        WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
+                            WHERE Doc_FIO = (?)) 
+                        AND Day_appointment = (?)""",(currentDocFIOStr,currentDateStr,))
+        TimeAppointment = cur.fetchall()
+        
+        for i in range(len(TimeAppointment)):
+            TimeAppointmentStr = ''.join(TimeAppointment[i])
+            comboBoxTime = self.comboBoxTime
+            comboBoxTime.addItem(TimeAppointmentStr)
+            
+        self.pushButtonStatus3.setText('Подтвердить запись')
+        self.pushButtonStatus3.clicked.connect(self.PacFIO)
+
+    def PacFIO(self):
+        # print (currentDocFIOStr)
+        # print (currentDateStr)
+        self.textEditFIO.setText('asdsad')
+        currentPacFIO = self.textEditFIO.toPlainText() 
+        print(self.textEditFIO.toPlainText() )
 
 
 class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def __init__(self):
         super().__init__()
         self.setupUi(self)  
-        self.showFullScreen()
+        # self.showFullScreen()
 
 
-        # self.label_date.setText(datetime.datetime.today().strftime('%d.%m.%Y')) 
-        self.label_date.setText('17.11.2023')
+        self.label_date.setText(datetime.datetime.today().strftime('%d.%m.%Y')) 
+        # self.label_date.setText('17.11.2023')
 
         self.tableFil()
     
-        self.pushButton_left.clicked.connect(self.onLeftBut)
+        self.pushButton_left.clicked.connect(self.onLeftBut_NewRes)
         self.pushButton_right.clicked.connect(self.onRightBut)
 
     def onLeftBut(self):
@@ -35,6 +110,13 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.label_date.setText(ourDate)
         self.tableClean()
         self.tableFil()
+
+    def onLeftBut_NewRes(self):
+        self.RegWindow= RegWindow()
+        self.RegWindow.show()
+        # self.hide()
+
+
 
 
     def onRightBut(self):
@@ -49,14 +131,20 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
     def tableClean(self):
         self.tableWidget.clear()
+        # rowNum=0
+        # colNum=0
+        # while rowNum<5:
+        #     while colNum <16:
+        #         item = QTableWidgetItem() 
+        #         item.setBackground(QtGui.QColor(255, 10, 10)) 
+        #         sus = '-'
+        #         item.setData(Qt.EditRole, sus) 
+        #         self.tableWidget.setItem(colNum+2, rowNum, item)
+        #         colNum+1
+        #     rowNum+1
 
-        # for c in range(self.tableWidget.columnCount()):
-        #     it = self.tableWidget.item(r, c)
-        #     if it is not None:
-        #         it.setText("")
-        #     w = self.tableWidget.cellWidget(r, c)
-        #     if isinstance(w, QtGui.QLabel):
-        #         w.clear()
+
+
 
     def tableFil(self):
         print("АХАХАХАХАХХ РОМ")
@@ -139,7 +227,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     
                     # ↓ Вставляем данные в таблицу
                     self.tableWidget.setItem(j+2, i, item)
-            self.tableWidget.itemClicked.connect(lambda: print('Button clicked'))
+            # self.tableWidget.itemClicked.connect(lambda: print('Button clicked'))
     #     self.pushButton_right.clicked.connect(self.def1)
     
     # def def1(self):
