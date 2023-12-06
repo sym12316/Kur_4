@@ -77,7 +77,7 @@ class Ui_MainWindow(object):
         self.pushButton_right.setText(_translate("MainWindow", "->>"))
         self.pushButton_left.setText(_translate("MainWindow", "<<-"))
 
-
+# asdasdsad
 if __name__ == "__main__":
     import sys
     app = QtWidgets.QApplication(sys.argv)
