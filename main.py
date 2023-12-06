@@ -17,6 +17,7 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         super().__init__()
         self.setupUi(self)
         # self.showFullScreen()
+        self.pushButtonStatus.setText('Выбрать врача')
         self.pushButtonStatus2.hide()
         self.pushButtonStatus3.hide()
         while True:
@@ -41,7 +42,7 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         self.pushButtonStatus2.show()
         self.pushButtonStatus.hide()
 
-        print ("мы делаем дело")
+        # print ("мы делаем дело")
         global currentDocFIOStr
         currentDocFIOStr = str(self.comboBoxDoc.currentText()) 
         
@@ -81,11 +82,20 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         self.pushButtonStatus3.clicked.connect(self.PacFIO)
 
     def PacFIO(self):
-        # print (currentDocFIOStr)
-        # print (currentDateStr)
-        self.textEditFIO.setText('asdsad')
+        print (currentDocFIOStr)
+        print (currentDateStr)
+        
+
+        # self.textEditFIO.setText('asdsad')
+        currentTimeStr = str(self.comboBoxTime.currentText()) 
+        print (currentTimeStr)
         currentPacFIO = self.textEditFIO.toPlainText() 
         print(self.textEditFIO.toPlainText() )
+
+        # pacientAppointmentinformation = (currentDocFIOStr,currentDateStr,currentTimeStr,currentPacFIO)
+        # cur.execute("""INSERT INTO Appointment(Pac_fio, Day_appointment, Time_appointment,) 
+        # VALUES(?,?,?);""",pacientAppointmentinformation)
+        # conn.commit()
 
 
 class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
@@ -147,7 +157,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
 
     def tableFil(self):
-        print("АХАХАХАХАХХ РОМ")
+        # print("АХАХАХАХАХХ РОМ")
         ourDate = self.label_date.text()
         # tableWidget.clear()
         # ↓ выбираем тип врача и ФИО
