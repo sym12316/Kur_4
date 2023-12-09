@@ -2,11 +2,11 @@ import sys
 import sqlite3 
 from PyQt5 import QtGui, QtWidgets
 from PyQt5.QtWidgets import QTableWidgetItem
-import MainWindow_2 as MainWindow
+import UI_MainWindow as MainWindow
 from functools import partial
 from PyQt5.QtCore import Qt
 import datetime
-import RegWindow as RegWindow
+import UI_RegWindow as RegWindow
 from datetime import date
 conn = sqlite3.connect(r'DB/SAR.DB')
 cur = conn.cursor()
@@ -110,56 +110,36 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         self.tableFil()
     
-        self.pushButton_left.clicked.connect(self.onLeftBut_NewRes)
+        self.pushButton_left.clicked.connect(self.onLeftBut)
         self.pushButton_right.clicked.connect(self.onRightBut)
+        self.pushButtonNewRes.clicked.connect(self.onBut_NewRes)
+        self.pushButtonUpdateTable.clicked.connect(self.tableCleanAndFil)
+
+    def onBut_NewRes(self):
+        self.RegWindow= RegWindow()
+        self.RegWindow.show()
+        # self.hide()
 
     def onLeftBut(self):
         ourDate = self.label_date.text()
         Date2 = datetime.datetime.strptime(ourDate, '%d.%m.%Y') + datetime.timedelta(days=-1)
         ourDate = Date2.strftime('%d.%m.%Y') 
         self.label_date.setText(ourDate)
-        self.tableClean()
-        self.tableFil()
-
-    def onLeftBut_NewRes(self):
-        self.RegWindow= RegWindow()
-        self.RegWindow.show()
-        # self.hide()
-
-
-
+        
+        self.tableCleanAndFil()
 
     def onRightBut(self):
         ourDate = self.label_date.text()
         Date2 = datetime.datetime.strptime(ourDate, '%d.%m.%Y') + datetime.timedelta(days=1)
         ourDate = Date2.strftime('%d.%m.%Y') 
         self.label_date.setText(ourDate)
-        self.tableClean()
-        self.tableFil()
         
+        self.tableCleanAndFil()
 
-
-    def tableClean(self):
+    def tableCleanAndFil(self):
+        # print("АХАХАХАХАХ РОООООМ")
         self.tableWidget.clear()
-        # rowNum=0
-        # colNum=0
-        # while rowNum<5:
-        #     while colNum <16:
-        #         item = QTableWidgetItem() 
-        #         item.setBackground(QtGui.QColor(255, 10, 10)) 
-        #         sus = '-'
-        #         item.setData(Qt.EditRole, sus) 
-        #         self.tableWidget.setItem(colNum+2, rowNum, item)
-        #         colNum+1
-        #     rowNum+1
-
-
-
-
-    def tableFil(self):
-        # print("АХАХАХАХАХХ РОМ")
         ourDate = self.label_date.text()
-        # tableWidget.clear()
         # ↓ выбираем тип врача и ФИО
         cur.execute("SELECT Spec FROM 'Doc' ORDER BY ID_Doc ASC;")
         medSpec = cur.fetchall()
