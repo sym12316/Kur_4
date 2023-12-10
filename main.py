@@ -8,9 +8,9 @@ from PyQt5.QtCore import Qt
 import datetime
 import UI_RegWindow as RegWindow
 from datetime import date
+# from registration import RegWindow as registration #попытка переноса в другой файл
 conn = sqlite3.connect(r'DB/SAR.DB')
 cur = conn.cursor()
-# data = ['table']
 
 class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
     def __init__(self):
@@ -20,6 +20,7 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         self.pushButtonStatus.setText('Выбрать врача')
         self.pushButtonStatus2.hide()
         self.pushButtonStatus3.hide()
+        self.labelStatus.hide()
         while True:
             self.BoxDoc()
             return
@@ -48,7 +49,8 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         
         cur.execute("""SELECT Day_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
-                            WHERE Doc_FIO = (?)) 
+                            WHERE Doc_FIO = (?))
+                        AND appointment_status = 0 
                         GROUP BY Day_appointment""",(currentDocFIOStr,))
         DayAppointment = cur.fetchall()
 
@@ -70,9 +72,10 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         cur.execute("""SELECT Time_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
                             WHERE Doc_FIO = (?)) 
-                        AND Day_appointment = (?)""",(currentDocFIOStr,currentDateStr,))
+                        AND Day_appointment = (?)
+                        AND appointment_status = 0""",(currentDocFIOStr,currentDateStr,))
         TimeAppointment = cur.fetchall()
-        
+        print (TimeAppointment)
         for i in range(len(TimeAppointment)):
             TimeAppointmentStr = ''.join(TimeAppointment[i])
             comboBoxTime = self.comboBoxTime
@@ -82,20 +85,39 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
         self.pushButtonStatus3.clicked.connect(self.PacFIO)
 
     def PacFIO(self):
-        print (currentDocFIOStr)
-        print (currentDateStr)
-        
-
-        # self.textEditFIO.setText('asdsad')
-        currentTimeStr = str(self.comboBoxTime.currentText()) 
-        print (currentTimeStr)
         currentPacFIO = self.textEditFIO.toPlainText() 
-        print(self.textEditFIO.toPlainText() )
-
-        # pacientAppointmentinformation = (currentDocFIOStr,currentDateStr,currentTimeStr,currentPacFIO)
-        # cur.execute("""INSERT INTO Appointment(Pac_fio, Day_appointment, Time_appointment,) 
-        # VALUES(?,?,?);""",pacientAppointmentinformation)
-        # conn.commit()
+        if currentPacFIO == "":
+            self.labelStatus.show()
+            self.labelStatus.setText("Введите ФИО пациента!")
+            self.PacFIO
+        else:
+            print (currentDocFIOStr)
+            print (currentDateStr)
+            print (self.comboBoxTime.currentText())
+            print (self.textEditFIO.toPlainText())
+            # pacientAppointmentinformation = (currentDocFIOStr,currentDateStr,currentTimeStr,currentPacFIO)
+            # cur.execute("""INSERT INTO Appointment(Pac_fio, Day_appointment, Time_appointment) 
+            # VALUES(?,?,?);""",pacientAppointmentinformation)
+            # conn.commit()
+            cur.execute(""" SELECT Pat_FIO,ID_Pat FROM Patient_card """)
+            AllPac = cur.fetchall()
+            print(AllPac)
+            for i in range(len(AllPac)):
+                if self.textEditFIO.toPlainText() == AllPac[i][0]:
+                    cur.execute(""" SELECT ID_Pat FROM Patient_card 
+                                        WHERE Pat_FIO = (?) """,(self.textEditFIO.toPlainText(),))
+                    PacID = cur.fetchall()
+                    currentPacID = int(''.join(map(str,PacID[0])))
+                    print (currentPacID)
+                    # ФУНКЦИЯ ЗАПИСИ КЛИЕНТА
+                    return 0 
+            asd = self.textEditFIO.toPlainText()
+            print(type(asd))
+            cur.execute(""" INSERT INTO Patient_card(Pat_FIO) VALUES(?);""",(asd,))
+            conn.commit()
+            print("Новый клиент добавлен!")
+                    
+                    # ФУНКЦИЯ ЗАПИСИ КЛИЕНТА
 
 
 class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
@@ -108,15 +130,21 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.label_date.setText(datetime.datetime.today().strftime('%d.%m.%Y')) 
         # self.label_date.setText('17.11.2023')
 
-        self.tableFil()
+        self.tableCleanAndFil()
     
         self.pushButton_left.clicked.connect(self.onLeftBut)
         self.pushButton_right.clicked.connect(self.onRightBut)
         self.pushButtonNewRes.clicked.connect(self.onBut_NewRes)
         self.pushButtonUpdateTable.clicked.connect(self.tableCleanAndFil)
 
+    # def onBut_NewRes(self): #попытка переноса в другой файл
+    #     self.registration.RegWindow = RegWindow()
+    #     self.registration.RegWindow.show()
+    #     registration()
+    #     # self.hide()
+
     def onBut_NewRes(self):
-        self.RegWindow= RegWindow()
+        self.RegWindow = RegWindow()
         self.RegWindow.show()
         # self.hide()
 
