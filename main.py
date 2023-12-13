@@ -75,7 +75,7 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
                         AND Day_appointment = (?)
                         AND appointment_status = 0""",(currentDocFIOStr,currentDateStr,))
         TimeAppointment = cur.fetchall()
-        print (TimeAppointment)
+        # print (TimeAppointment)
         for i in range(len(TimeAppointment)):
             TimeAppointmentStr = ''.join(TimeAppointment[i])
             comboBoxTime = self.comboBoxTime
@@ -91,33 +91,49 @@ class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
             self.labelStatus.setText("Введите ФИО пациента!")
             self.PacFIO
         else:
-            print (currentDocFIOStr)
-            print (currentDateStr)
-            print (self.comboBoxTime.currentText())
-            print (self.textEditFIO.toPlainText())
-            # pacientAppointmentinformation = (currentDocFIOStr,currentDateStr,currentTimeStr,currentPacFIO)
-            # cur.execute("""INSERT INTO Appointment(Pac_fio, Day_appointment, Time_appointment) 
-            # VALUES(?,?,?);""",pacientAppointmentinformation)
-            # conn.commit()
+            # print (self.textEditFIO.toPlainText())
+            
             cur.execute(""" SELECT Pat_FIO,ID_Pat FROM Patient_card """)
             AllPac = cur.fetchall()
-            print(AllPac)
+            # print(AllPac)
             for i in range(len(AllPac)):
                 if self.textEditFIO.toPlainText() == AllPac[i][0]:
                     cur.execute(""" SELECT ID_Pat FROM Patient_card 
                                         WHERE Pat_FIO = (?) """,(self.textEditFIO.toPlainText(),))
                     PacID = cur.fetchall()
-                    currentPacID = int(''.join(map(str,PacID[0])))
-                    print (currentPacID)
-                    # ФУНКЦИЯ ЗАПИСИ КЛИЕНТА
-                    return 0 
+                    self.currentPacID = int(''.join(map(str,PacID[0])))
+                    print (self.currentPacID)
+                    self.PacRegistration()
             asd = self.textEditFIO.toPlainText()
-            print(type(asd))
             cur.execute(""" INSERT INTO Patient_card(Pat_FIO) VALUES(?);""",(asd,))
             conn.commit()
             print("Новый клиент добавлен!")
-                    
-                    # ФУНКЦИЯ ЗАПИСИ КЛИЕНТА
+            cur.execute(""" SELECT ID_Pat FROM Patient_card 
+                                        WHERE Pat_FIO = (?) """,(self.textEditFIO.toPlainText(),))
+            PacID = cur.fetchall()
+            self.currentPacID = int(''.join(map(str,PacID[0])))
+            print (self.currentPacID)
+            self.PacRegistration()
+
+    def PacRegistration(self):
+        print("SSSS")
+        # вставляем : PacID 
+        currentTimeStr = self.comboBoxTime.currentText()
+        print(currentDocFIOStr)
+        print(currentDateStr)
+        print(currentTimeStr)
+        cur.execute("""SELECT ID_appointment FROM Appointment 
+                        WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
+                            WHERE Doc_FIO = (?)) 
+                        AND Day_appointment = (?)
+                        AND Time_appointment =(?)
+                        AND appointment_status = 0""",(currentDocFIOStr,currentDateStr,currentTimeStr,))
+        IDAppointment = cur.fetchall()
+        currentIDAppointment = int(''.join(map(str,IDAppointment[0])))
+        print(currentIDAppointment)
+
+        cur.execute("""Update Appointment set ID_Pat = (?) ,appointment_status = 1 where ID_appointment = (?)""",(self.currentPacID,currentIDAppointment,))
+        conn.commit()
 
 
 class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
@@ -182,6 +198,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         
 
 
+        self.tableWidget.setVerticalHeaderLabels(['','','9:00','9:30','10:00','10:30','11:00','11:30','12:00','12:30','13:00','13:30','14:00','14:30','15:00','15:30','16:00','16:30'])
         
         # ↓ забиваем ячейки
         for i in range(len(docFIO)):
@@ -237,11 +254,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
                     # ↓ проверка состояния записи, окрашивание ячейки
                     if appointmentStatusStr == 0:
-                        item.setBackground(QtGui.QColor(255, 128, 128))
+                        item.setBackground(QtGui.QColor(255, 126, 147)) #красный    ЗАПИСИ НЕТ 0
                     elif  appointmentStatusStr == 1:
-                        item.setBackground(QtGui.QColor(200, 200, 200))
+                        item.setBackground(QtGui.QColor(163, 198, 192)) # Очень светлый зеленовато-синий ПРИЁМ ЕСТЬ НО НЕ ТОЧНО
                     elif  appointmentStatusStr == 2:
-                        item.setBackground(QtGui.QColor(98, 111, 222))
+                        item.setBackground(QtGui.QColor(98, 111, 222))  # синий ПРИЁМ ЕСТЬ И ЭТО ТОЧНО
                     
                     # ↓ Вставляем данные в таблицу
                     self.tableWidget.setItem(j+2, i, item)
