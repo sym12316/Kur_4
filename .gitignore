@@ -3,3 +3,5 @@ __pycache__/
 About_PyQT5.txt
 MainWindow.ui
 test_table.py
+Old_UI/
+TestWindow_1.py
