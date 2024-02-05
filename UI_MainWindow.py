@@ -158,7 +158,9 @@ class Ui_MainWindow(object):
         spacerItem6 = QtWidgets.QSpacerItem(10, 10, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout_3.addItem(spacerItem6)
         MainWindow.setCentralWidget(self.centralwidget)
-
+        self.pushButton_change_appointment_green.setStyleSheet('QPushButton {background-color: #a3c6c0;}')
+        self.pushButton_change_appointment_blue.setStyleSheet('QPushButton {background-color: #626fde;}')
+        
 
         self.retranslateUi(MainWindow)
         
@@ -181,8 +183,9 @@ class Ui_MainWindow(object):
         self.pushButtonUpdateTable.setText(_translate("MainWindow", "Обновить таблицу"))
         self.pushButtonNewRes.setText(_translate("MainWindow", "Поиск свободной записи"))
         self.pushButtonUpdateRes.setText(_translate("MainWindow", "Записать пациента в пустую ячейку"))
-        self.pushButton_change_appointment_green.setText(_translate("MainWindow", "PushButton"))
-        self.pushButton_change_appointment_blue.setText(_translate("MainWindow", "PushButton"))
+        self.pushButton_change_appointment_green.setText(_translate("MainWindow", "Изменить \nстатус \nприёма"))
+        self.pushButton_change_appointment_blue.setText(_translate("MainWindow", "Изменить \nстатус \nприёма"))
+
 
         self.pushButton_Search.setText(_translate("MainWindow", "pushButton_Search"))
 
