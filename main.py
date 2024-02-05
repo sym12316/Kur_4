@@ -12,6 +12,13 @@ import UI_MainWindow as MainWindow
 import UI_AppoimentWindowInTable as Appointment_Window
 import UI_NotificationDialog as NotificationDialog
 import UI_RegWindow as RegWindow
+# import NewAppoimentWindow as NewAppoimentWindow
+import UI_NewDocAndSpecWindow as NewDocAndSpecWindow
+import UI_NewAppoimentDayWindow as NewAppoimentWindow
+import UI_ChooseWhatEdit as ChooseWhatEdit
+import UI_NoticeDialog as NoticeDialog
+
+
 from functools import partial
 
 # from registration import RegWindow as registration #попытка переноса в другой файл
@@ -347,6 +354,145 @@ class DocFilther(QtWidgets.QDialog, DocFilther.Ui_Dialog):
 
         self.pushButtonChangeFilter.clicked.connect(self.filtherDoc)
 
+class NewAppoimentWindow(QtWidgets.QMainWindow, NewAppoimentWindow.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+
+        cur.execute("""SELECT Spec FROM Doc GROUP BY Spec""",())
+        docSpec = cur.fetchall()
+        # ↓ переформотируем tuple в int/str
+        for i in range(len(docSpec)):
+            docSpecStr = ''.join(docSpec[i])
+            # self.comboBox = self.comboBoxDoc
+            self.comboBox_Doc_Spec.addItem(docSpecStr)
+        self.comboBox_Doc_Fio_Filling()
+        
+
+        self.pushButton_Accept_New_Day.clicked.connect(self.onButton_Accept_New_Day)
+        self.comboBox_Doc_Spec.activated.connect(self.comboBox_Doc_Fio_Filling)
+
+            
+
+    def comboBox_Doc_Fio_Filling(self):
+        self.comboBox_Doc_Fio.clear()
+        cur.execute("""SELECT Doc_FIO FROM Doc
+                        WHERE Spec = (?)""",(self.comboBox_Doc_Spec.currentText(),))
+        docFIO = cur.fetchall()
+        for i in range(len(docFIO)):
+            docFIOStr = ''.join(docFIO[i])
+            # self.comboBox = self.comboBoxDoc
+            self.comboBox_Doc_Fio.addItem(docFIOStr)
+
+    def onButton_Accept_New_Day(self):
+        
+        cur.execute(""" SELECT ID_Doc FROM Doc
+                        WHERE   Spec = (?) 
+                        AND     Doc_FIO = (?)""",(self.comboBox_Doc_Spec.currentText(), self.comboBox_Doc_Fio.currentText(),))
+        docId = cur.fetchall()
+
+
+        # appointment_status = 0
+        print(self.comboBox_Doc_Fio.currentText())
+        
+        if self.comboBox_Doc_Fio.currentText() == '':
+            print('asdasdasd')
+        if self.textEdit_Doc_Date.toPlainText() =='':
+            self.label_Doc_Num_Step_2.setText("Укажите дни приёма!")
+        # elif self.timeEdit.time().toString('HH:mm')[0] == '0':
+        #     self.label_Doc_Time.setText("Указано не верное \nвремя записи")
+        else:
+            days = self.textEdit_Doc_Date.toPlainText().replace(' ','').split(',')
+            time =  self.timeEdit.time().toString('HH:mm')
+            for d in range(len(days)):
+                if self.spinBox_Time_Num_Step.value() == 0:
+                    self.spinBox_Time_Num_Step.setValue(1)
+                for i in range(self.spinBox_Time_Num_Step.value()):
+                    time2 = datetime.datetime.strptime(time, '%H:%M') + datetime.timedelta(minutes = self.spinBox_Time_Step.value()*i)
+                    
+                    
+                    cur.execute(""" INSERT INTO Appointment(Day_appointment, Time_appointment, ID_Pat, ID_Doc, appointment_status) 
+                                VALUES(?, ?, 0, ?, 0);
+                                """,(days[d],time2.strftime('%H:%M'),docId[0][0],))
+                    conn.commit()
+                    
+class ChooseWhatEdit(QtWidgets.QMainWindow, ChooseWhatEdit.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+
+        self.pushButton_Cansel.clicked.connect(lambda:self.close())
+        self.pushButton_New_Appoinment.clicked.connect(self.onButtonNewAppoinment)
+        self.pushButton_New_Doc.clicked.connect(self.onButtonNewDoc)
+
+
+    def onButtonNewDoc(self):
+        self.NewDocAndSpecWindow = NewDocAndSpecWindow()  
+        self.NewDocAndSpecWindow.show()
+        self.close()
+
+    def onButtonNewAppoinment(self):
+        self.NewAppoimentWindow = NewAppoimentWindow()  
+        self.NewAppoimentWindow.show()
+        self.close()
+
+class NewDocAndSpecWindow(QtWidgets.QMainWindow, NewDocAndSpecWindow.Ui_Form):
+    def __init__(self):
+        super().__init__()
+        self.setupUi(self)
+        self.pushButton_Accept_New_Doc.clicked.connect(self.onButton_Accept_New_Doc_Check)
+        self.pushButton_Accept_New_Spec.clicked.connect(self.onButton_Accept_New_Spec_Check)
+        
+        cur.execute("""SELECT Spec FROM Doc GROUP BY Spec""",())
+        docSpec = cur.fetchall()
+        for i in range(len(docSpec)):
+            docSpecStr = ''.join(docSpec[i])
+            self.comboBox_Doc_Spec.addItem(docSpecStr)
+
+    def onButton_Accept_New_Doc_Check(self):
+        if self.textEdit_Doc_Fio.toPlainText() != '':
+            
+            cur.execute(""" INSERT INTO Doc(Doc_FIO,Spec) 
+                            VALUES(?,?);""",(self.textEdit_Doc_Fio.toPlainText(), self.comboBox_Doc_Spec.currentText(),))
+            conn.commit()
+            cur.execute(""" SELECT  Doc_FIO,Spec FROM Doc 
+                            WHERE   Doc_FIO = (?)
+                            AND     Spec = (?);""",(self.textEdit_Doc_Fio.toPlainText(), self.comboBox_Doc_Spec.currentText(),))
+            fillingCheck = cur.fetchall()
+            if len(fillingCheck) != 0:
+                self.NoticeDialog = NoticeDialog(self)  
+                self.NoticeDialog.show()
+            else:
+                self.NoticeDialog = NoticeDialog(self)  
+                self.NoticeDialog.show()
+                self.NoticeDialog.label.setText('Произошла ошибка\nврач не добавлен.')
+        else:
+            self.pushButton_Accept_New_Doc.setText('Добавить Врача\nВведите ФИО')
+
+    def onButton_Accept_New_Spec_Check(self):
+        # self.textEdit_New_Spec
+        if self.textEdit_New_Spec.toPlainText() != '':
+            
+            cur.execute(""" INSERT INTO Doc(Doc_FIO,Spec) 
+                            VALUES(?,?);""",(self.textEdit_Doc_Fio.toPlainText(), self.textEdit_New_Spec.toPlainText(),))
+            conn.commit()
+            cur.execute(""" SELECT  Doc_FIO,Spec FROM Doc 
+                            WHERE   Doc_FIO = (?)
+                            AND     Spec = (?);""",(self.textEdit_Doc_Fio.toPlainText(), self.textEdit_New_Spec.toPlainText(),))
+            fillingCheck = cur.fetchall()
+            if len(fillingCheck) != 0:
+                self.NoticeDialog = NoticeDialog(self)  
+                self.NoticeDialog.show()
+                self.NoticeDialog.label.setText('Новая специальность и врач \nуспешно добавлен!')
+            else:
+                self.NoticeDialog = NoticeDialog(self)  
+                self.NoticeDialog.show()
+                self.NoticeDialog.label.setText('Произошла ошибка\nврач не добавлен.')
+
+        else:
+            self.label_Doc_New_Spec.setText('ВВЕДИТЕ новую \nспециальность')
+
 class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def __init__(self, **kwargs):
         super().__init__( **kwargs)
@@ -383,6 +529,11 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.pushButton_change_appointment_blue.clicked.connect(self.onChangeAppointmentBlueButton)
 
         self.pushButton_Search.clicked.connect(self.DocFilther)
+        self.pushButtonNewDoc.clicked.connect(self.onChooseWhatEdit)
+
+    def onChooseWhatEdit(self):
+        self.ChooseWhatEdit = ChooseWhatEdit()  
+        self.ChooseWhatEdit.show()
 
     def DocFilther(self):
         self.DocFilther = DocFilther(self)  
@@ -681,7 +832,13 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 # ↓ Вставляем данные в таблицу
                 self.tableWidget.setItem(j+2, i, item)
                 
-
+class NoticeDialog(QtWidgets.QDialog, NoticeDialog.Ui_Dialog):
+    def __init__(self,root):
+        super().__init__(root)
+        self.setupUi(self)
+        self.main = root
+        self.pushButton.clicked.connect(lambda:self.close())
+        
 
 def main():
     app = QtWidgets.QApplication(sys.argv)

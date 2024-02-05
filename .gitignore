@@ -1,9 +1,8 @@
 __pycache__/
 .vscode/
+Calendar_test/
 About_PyQT5.txt
-MainWindow.ui
-test_table.py
-Old_UI/
-TestWindow_1.py
+untitled_py.py
 registration.py
 test_table.py
+Old_UI/
