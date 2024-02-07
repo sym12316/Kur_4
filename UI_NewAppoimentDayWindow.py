@@ -176,6 +176,7 @@ class Ui_Form(object):
         font.setFamily("Consolas")
         font.setPointSize(14)
         self.spinBox_Time_Step.setFont(font)
+        self.spinBox_Time_Step.setMaximum(720)
         self.spinBox_Time_Step.setObjectName("spinBox_Time_Step")
         self.gridLayout_2.addWidget(self.spinBox_Time_Step, 1, 4, 1, 1)
         spacerItem10 = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)

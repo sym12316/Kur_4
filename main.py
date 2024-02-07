@@ -11,14 +11,14 @@ import UI_DocFilther as DocFilther
 import UI_MainWindow as MainWindow
 import UI_AppoimentWindowInTable as Appointment_Window
 import UI_EditDelitingWindow as EditDelitingWindow
-import UI_NotificationDialog as NotificationDialog
-import UI_RegWindow as RegWindow
+import UI_NotificationDialog as QuestionDialog
+import RegWindow as RegWindow
 # import NewAppoimentDayWindow as NewAppoimentDayWindow
 import UI_NewDocAndSpecWindow as NewDocAndSpecWindow
 import UI_NewAppoimentDayWindow as NewAppoimentDayWindow
 import UI_ChooseWhatEdit as ChooseWhatEdit
 import UI_NoticeDialog as NoticeDialog
-import UI_NotificationDialog as dialogYesOrNo
+import UI_NotificationDialog as QuestionDialog
 
 
 from functools import partial
@@ -27,43 +27,23 @@ from functools import partial
 conn = sqlite3.connect(r'DB/SAR.DB')
 cur = conn.cursor()
                                         # , MainWindow.Ui_MainWindow
-class NotificationDialog(QtWidgets.QDialog, NotificationDialog.Ui_Dialog):
+class QuestionDialog(QtWidgets.QDialog, QuestionDialog.Ui_Dialog):
     def __init__(self, root, **kwargs):
         super().__init__(root, **kwargs)
         
         self.setupUi(self)
         self.main = root
 
-        self.label_Notification.setText(self.label_Notification.text() + self.main.AppointmentCollor)
-
-        self.label_Data.setText(self.label_Data.text() + self.main.tableWidget.item(self.main.sel_row, self.main.sel_col ).text())
-      
-        self.buttonBox.accepted.connect(self.accept)
+        # self.buttonBox.accepted.connect(self.accept)
         self.buttonBox.rejected.connect(lambda:self.close())
 
-    def accept(self):
-        
-        if self.main.AppointmentCollor == 'запись подтверждена':
-            appointment_Status = 2
-        elif self.main.AppointmentCollor == 'запись не подтверждена':
-            appointment_Status = 1
-        else: 
-            self.label_Data.setText("Возникла ошибка.\nexiption 101")
-
-        appointment_Id = self.main.tableWidget.item(self.main.sel_row, self.main.sel_col).statusTip()
-
-        cur.execute(""" UPDATE Appointment set appointment_status = (?)
-                        WHERE ID_appointment = (?)""",(appointment_Status, appointment_Id,))
-        conn.commit()
-        self.main.tableFillSpec()
-
-        self.close()
-
 class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow):
-    def __init__(self):
-        super().__init__()
+    def __init__(self,root):
+        super().__init__(root)
         self.setupUi(self)
-        # self.showFullScreen()
+
+        self.MainWindow = root
+
         self.labelStatus.setText('')
         # Sell_Data,Doc_Fio,Doc_Spec
         self.Num_Fio_Pac = Sell_Data.split("\n")
@@ -75,7 +55,6 @@ class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow
 
         self.pushButton_Appointment.clicked.connect(self.PacFIO)
 
-
     def PacFIO(self):
         currentPacFIO = self.textEdit_Pac_Fio.toPlainText() 
 
@@ -83,6 +62,9 @@ class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow
             self.labelStatus.setText("Введите ФИО пациента!")
             self.PacFIO
         else:
+
+            self.NoticeDialog = NoticeDialog(self)
+            self.NoticeDialog.label.setText('')
 
             currentPacFIO = self.textEdit_Pac_Fio.toPlainText()
             cur.execute(""" SELECT Pat_FIO,ID_Pat FROM Patient_card
@@ -92,7 +74,9 @@ class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow
             if Pac_Data_From_SQL != []:
                 if self.checkBox_Appointment.isChecked() == 1:
                     self.PacID = Pac_Data_From_SQL[0][1]
-                    
+                    cur.execute(""" UPDATE Patient_card set Pat_Card = 1 
+                                    WHERE ID_Pat = (?)""",(self.PacID,))
+                    conn.commit()
                     self.PacRegistration()
 
                 else: 
@@ -104,15 +88,18 @@ class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow
             else:
                 if self.checkBox_Appointment.isChecked() == 1:
                     
-                    cur.execute(""" INSERT INTO Patient_card(Pat_FIO,Pat_Card) VALUES(?,1);""",(currentPacFIO,))
-                    self.labelStatus.setText('Добавлен существующий(????) Пациент.')
+                    cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num, Pat_Card) VALUES(?,?,1);""",(currentPacFIO, self.textEditl_Pac_Num.toPlainText(),))
+                    
+                    self.NoticeDialog.label.setText('Добавленна запись для\nсуществующего пациент.')
                 else: 
-                    cur.execute(""" INSERT INTO Patient_card(Pat_FIO) VALUES(?);""",(currentPacFIO,))
-                    self.labelStatus.setText('Добавлен новый Пациент.')
+                    cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num) VALUES(?,?);""",(currentPacFIO, self.textEditl_Pac_Num.toPlainText(),))
+                    self.NoticeDialog.label.setText('Добавлен новый пациент.')
+
                 conn.commit()
 
                 cur.execute(""" SELECT ID_Pat FROM Patient_card 
-                                WHERE Pat_FIO = (?) """,(currentPacFIO,))
+                                WHERE Pat_FIO = (?)
+                                AND Phone_num = (?) """,(currentPacFIO, self.textEditl_Pac_Num.toPlainText(),))
                 ID_Pat = cur.fetchall()
                 self.PacID = int(''.join(map(str,ID_Pat[0])))
 
@@ -121,7 +108,9 @@ class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow
 
     def PacRegistration(self):
         # вставляем : PacID 
-        
+
+        self.labelStatus.setText('')
+
         cur.execute("""SELECT ID_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
                             WHERE Doc_FIO = (?)) 
@@ -131,113 +120,168 @@ class Appointment_Window(QtWidgets.QMainWindow, Appointment_Window.Ui_MainWindow
         IDAppointment = cur.fetchall()
         currentIDAppointment = int(''.join(map(str,IDAppointment[0])))
         
-        cur.execute("""Update Appointment set ID_Pat = (?) ,appointment_status = 1 where ID_appointment = (?)""",(self.PacID, currentIDAppointment,))
+        cur.execute("""UPDATE Appointment set ID_Pat = (?) ,appointment_status = 1 WHERE ID_appointment = (?)""",(self.PacID, currentIDAppointment,))
         conn.commit()
-        self.labelStatus.setText(self.labelStatus.text()+'\nЗапись успешно добалена!')
+        
+        self.NoticeDialog.label.setText(self.NoticeDialog.label.text()+'\nЗапись успешно добалена!')
+
+        self.NoticeDialog.show()
+        self.NoticeDialog.pushButton.clicked.connect(self.NoticeDialog.closeParent)
+
+        self.MainWindow.whoseScheduleIsThis()
 
 class RegWindow(QtWidgets.QMainWindow, RegWindow.Ui_Form):
-    def __init__(self):
-        super().__init__()
+    def __init__(self,root):
+        super().__init__(root)
         self.setupUi(self)
-        
-        self.pushButtonStatus.setText('Выбрать врача')
-        self.labelStatus.hide()
-        
+        self.MainWindow = root
+        self.ButtonsHide()
+
         cur.execute("""SELECT Doc_FIO FROM Doc ORDER BY Doc_FIO ASC""",())
         docFIO = cur.fetchall()
         # ↓ переформотируем tuple в int/str
         for i in range(len(docFIO)):
-            docFIOStr = ''.join(docFIO[i])
-            comboBoxDoc = self.comboBoxDoc
-            comboBoxDoc.addItem(docFIOStr)
+            self.comboBoxDoc.addItem(str(docFIO[i][0]))
         
-        self.comboBoxDoc.activated.connect(self.comboBox_Doc_Fio_Filling)
+        self.comboBoxDoc.activated.connect(self.comboBox_Day_Filling)
+        self.pushButtonStatus.clicked.connect(self.PacFIO)
 
-    def comboBox_Doc_Fio_Filling(self):
-        self.comboBoxTime.clear()
+    def comboBox_Day_Filling(self):
+        self.ButtonsHide()
         self.comboBoxDate.clear()
-
-        self.currentDocFIOStr = str(self.comboBoxDoc.currentText()) 
         
         cur.execute("""SELECT Day_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
                             WHERE Doc_FIO = (?))
                         AND appointment_status = 0 
-                        GROUP BY Day_appointment""",(self.currentDocFIOStr,))
+                        GROUP BY Day_appointment
+                        ORDER BY Day_appointment ASC""",(self.comboBoxDoc.currentText(),))
         DayAppointment = cur.fetchall()
 
-        for i in range(len(DayAppointment)):
-            DayAppointmentStr = ''.join(DayAppointment[i])
-            comboBoxDate = self.comboBoxDate
-            comboBoxDate.addItem(DayAppointmentStr)
+        if len(DayAppointment) == 0:
+            self.labelStatus.setText('Свободных дней нет')
+        else:
+            for i in range(len(DayAppointment)):
+                # print(DayAppointment[i][0])
+                # asd = datetime.datetime.strptime(DayAppointment[i][0], '%d.%m.%Y')
+                # print(asd)
+                # print(self.weekdayDefining(datetime.datetime.strptime(str(DayAppointment[i][0]), '%d.%m.%Y')))
+                
+                self.comboBoxDate.addItem(self.weekdayDefining(datetime.datetime.strptime(str(DayAppointment[i][0]), '%d.%m.%Y')))
+
+        self.comboBoxDate.activated.connect(self.comboBox_Time_Filling)
+
+    def weekdayDefining(self,day):
+        day_num = day.weekday()
+
+        if day_num == 0:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Понедельник')
+        elif day_num == 1:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Понедельник')
+        elif day_num == 2:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Среда')
+        elif day_num == 3:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Четверг')
+        elif day_num == 4:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Пятница')
+        elif day_num == 5:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Суббота')
+        elif day_num == 6:
+            Weekday_Now = (day.strftime('%d.%m.%Y') + ' - Воскресенье')
         
-        self.comboBoxDate.activated.connect(self.BoxTime)
+        return(Weekday_Now)
 
+    def comboBox_Time_Filling(self):
+        self.ButtonsHide()
 
-    def BoxTime(self):
-        self.comboBoxTime.clear()
+        self.labelStatus.setText('Будут показаны только \nдни с свободными приёмами.')
 
-        
-        self.currentDateStr = str(self.comboBoxDate.currentText()) 
+        self.currentDateStr = self.comboBoxDate.currentText().split(' ')
+        self.currentDateStr = self.currentDateStr[0]
         
         cur.execute("""SELECT Time_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
                             WHERE Doc_FIO = (?)) 
                         AND Day_appointment = (?)
-                        AND appointment_status = 0""",(self.currentDocFIOStr,self.currentDateStr,))
+                        AND appointment_status = 0
+                        ORDER BY Time_appointment ASC""",(self.comboBoxDoc.currentText(),self.currentDateStr,))
         TimeAppointment = cur.fetchall()
-        # print (TimeAppointment)
+        
+        if len(TimeAppointment) == 0:
+            self.labelStatus.setText('Свободных часов нет')
+
         for i in range(len(TimeAppointment)):
-            TimeAppointmentStr = ''.join(TimeAppointment[i])
-            comboBoxTime = self.comboBoxTime
-            comboBoxTime.addItem(TimeAppointmentStr)
+            self.comboBoxTime.addItem(TimeAppointment[i][0])
+        self.comboBoxTime.activated.connect(self.ButtonsActivated)
             
+    def ButtonsHide(self):
+        self.comboBoxTime.clear()
+        self.labelStatus.setText('Будут показаны только \nдни с свободными приёмами.')
+        self.textEditFIO.setEnabled(False)
+        self.textEditFIO_2.setEnabled(False)   
+        self.labelFIO.setEnabled(False)   
+        self.labelPhone.setEnabled(False)   
+
+    def ButtonsActivated(self):
+        self.textEditFIO.setEnabled(1)
+        self.textEditFIO_2.setEnabled(1)   
+        self.labelFIO.setEnabled(1)   
+        self.labelPhone.setEnabled(1)  
 
     def PacFIO(self):
-        currentPacFIO = self.textEditFIO.toPlainText() 
-        if currentPacFIO == "":
-            self.labelStatus.show()
+        self.labelStatus.setText("")
+        if self.textEditFIO.toPlainText()  == "":
             self.labelStatus.setText("Введите ФИО пациента!")
-            self.PacFIO
+        elif self.textEditFIO_2.toPlainText() == "":
+            self.labelStatus.setText("Введите номер пациента!")
         else:
-            # print (self.textEditFIO.toPlainText())
-            
-            cur.execute(""" SELECT Pat_FIO,ID_Pat FROM Patient_card """)
-            AllPac = cur.fetchall()
-            # print(AllPac)
-            for i in range(len(AllPac)):
-                if self.textEditFIO.toPlainText() == AllPac[i][0]:
-                    cur.execute(""" SELECT ID_Pat FROM Patient_card 
-                                        WHERE Pat_FIO = (?) """,(self.textEditFIO.toPlainText(),))
-                    PacID = cur.fetchall()
-                    self.currentPacID = int(''.join(map(str,PacID[0])))
-                    
-                    self.PacRegistration()
-            asd = self.textEditFIO.toPlainText()
-            cur.execute(""" INSERT INTO Patient_card(Pat_FIO) VALUES(?);""",(asd,))
-            conn.commit()
-            
-            cur.execute(""" SELECT ID_Pat FROM Patient_card 
-                                        WHERE Pat_FIO = (?) """,(self.textEditFIO.toPlainText(),))
-            PacID = cur.fetchall()
-            self.currentPacID = int(''.join(map(str,PacID[0])))
+            # Проверка существования пациента
+            self.PacID()
+            if len(self.PacId) == 0:
+                cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num) 
+                                VALUES(?,?);""",(
+                                            self.textEditFIO.toPlainText(), 
+                                            self.textEditFIO_2.toPlainText(),))
+                conn.commit()
+                self.PacID()
+                
             self.PacRegistration()
 
-    def PacRegistration(self):
-        # вставляем : PacID 
-        currentTimeStr = self.comboBoxTime.currentText()
-        cur.execute("""SELECT ID_appointment FROM Appointment 
-                        WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
-                            WHERE Doc_FIO = (?)) 
-                        AND Day_appointment = (?)
-                        AND Time_appointment =(?)
-                        AND appointment_status = 0""",(self.currentDocFIOStr,self.currentDateStr,currentTimeStr,))
-        IDAppointment = cur.fetchall()
-        currentIDAppointment = int(''.join(map(str,IDAppointment[0])))
-
-        cur.execute("""Update Appointment set ID_Pat = (?) ,appointment_status = 1 where ID_appointment = (?)""",(self.currentPacID,currentIDAppointment,))
-        conn.commit()
+    def PacID(self):
+        cur.execute(""" SELECT ID_Pat FROM Patient_card 
+                                        WHERE Pat_FIO = (?) 
+                                        AND Phone_num = (?)""",(
+                                            self.textEditFIO.toPlainText(), 
+                                            self.textEditFIO_2.toPlainText(),))
+        self.PacId = cur.fetchall()
         
+    def PacRegistration(self):
+        # вставляем : PacID в AppoinmentTable
+
+        self.comboBoxTime.currentText()
+
+        cur.execute(""" SELECT ID_appointment FROM Appointment 
+                            WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
+                                            WHERE Doc_FIO = (?)) 
+                            AND Day_appointment = (?)
+                            AND Time_appointment =(?)
+                            AND appointment_status = 0""",(
+                                self.comboBoxDoc.currentText(), 
+                                self.currentDateStr, 
+                                self.comboBoxTime.currentText(),))
+        IDAppointment = cur.fetchall()
+        print(IDAppointment)
+        cur.execute(""" UPDATE Appointment 
+                            set ID_Pat = (?) ,appointment_status = 1 
+                            WHERE ID_appointment = (?)""",(
+                                    self.PacId[0][0], 
+                                    IDAppointment[0][0],))
+        conn.commit()
+        self.Notice = NoticeDialog(self)
+        self.Notice.show()
+        self.Notice.pushButton.clicked.connect(self.Notice.closeParent)
+        self.MainWindow.whoseScheduleIsThis()
+
 class DocFilther(QtWidgets.QDialog, DocFilther.Ui_Dialog):
     def __init__(self, root):
         super().__init__(root)
@@ -278,20 +322,20 @@ class DocFilther(QtWidgets.QDialog, DocFilther.Ui_Dialog):
     def onButtonSelect(self):
         self.pushButtonSelect.setStyleSheet('QPushButton {background-color: #a3c6c0;}')
         item = QTableWidgetItem()
-        item = self.tableWidget.item(self.sel_row, self.sel_col)
+        item = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn())
         item.setStatusTip('1')
         item.setBackground(QtGui.QColor(100,255,100))
-        self.tableWidget.takeItem(self.sel_row, self.sel_col)
-        self.tableWidget.setItem(self.sel_row, self.sel_col, item)
+        self.tableWidget.takeItem(self.tableWidget.currentRow(), self.tableWidget.currentColumn())
+        self.tableWidget.setItem(self.tableWidget.currentRow(), self.tableWidget.currentColumn(), item)
 
     def onButtonDeselect(self):
         self.pushButtonSelect.setStyleSheet('QPushButton {background-color: #a3c6c0;}')
         item = QTableWidgetItem()
-        item = self.tableWidget.item(self.sel_row, self.sel_col)
+        item = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn())
         item.setStatusTip('0')
         item.setBackground(QtGui.QColor(255,255,255))
-        self.tableWidget.takeItem(self.sel_row, self.sel_col)
-        self.tableWidget.setItem(self.sel_row, self.sel_col, item)
+        self.tableWidget.takeItem(self.tableWidget.currentRow(), self.tableWidget.currentColumn())
+        self.tableWidget.setItem(self.tableWidget.currentRow(), self.tableWidget.currentColumn(), item)
 
     def filtherDoc(self):
         self.whatAreYouLookingFor = 1
@@ -383,8 +427,7 @@ class NewAppoimentDayWindow(QtWidgets.QMainWindow, NewAppoimentDayWindow.Ui_Form
 
         if self.textEdit_Doc_Date.toPlainText() =='':
             self.label_Doc_Num_Step_2.setText("Укажите дни приёма!")
-        # elif self.timeEdit.time().toString('HH:mm')[0] == '0':
-        #     self.label_Doc_Time.setText("Указано не верное \nвремя записи")
+            
         else:
             days = self.textEdit_Doc_Date.toPlainText().replace(' ','').replace('\n','').split(',')
             time =  self.timeEdit.time().toString('HH:mm')
@@ -399,6 +442,10 @@ class NewAppoimentDayWindow(QtWidgets.QMainWindow, NewAppoimentDayWindow.Ui_Form
                                 VALUES(?, ?, 0, ?, 0);
                                 """,(days[d],time2.strftime('%H:%M'),docId[0][0],))
                     conn.commit()
+            self.Notice = NoticeDialog(self)
+            self.Notice.show()
+            self.Notice.label.setText('Новые записи успешно добавленны!')
+            self.Notice.pushButton.clicked.connect(self.Notice.closeParent)
                     
 class ChooseWhatEdit(QtWidgets.QMainWindow, ChooseWhatEdit.Ui_Form):
     def __init__(self):
@@ -476,15 +523,6 @@ class NewDocAndSpecWindow(QtWidgets.QMainWindow, NewDocAndSpecWindow.Ui_Form):
         else:
             self.label_Doc_New_Spec.setText('ВВЕДИТЕ новую \nспециальность')
 
-class dialogYesOrNo(QtWidgets.QDialog, dialogYesOrNo.Ui_Dialog):
-    def __init__(self, root, **kwargs):
-        super().__init__(root, **kwargs)
-        self.setupUi(self)
-        self.parent = root
-
-    # def accept(self):
-    #     self.close()
-             
 class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow):
     def __init__(self,root):
         super().__init__(root)
@@ -498,7 +536,7 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         self.pushButton_Appoiment.clicked.connect(self.onButtonAppoiment)
         
     def onButtonAppoiment(self):
-        self.dialog = dialogYesOrNo(self)
+        self.dialog = QuestionDialog(self)
         self.dialog.show()
 
         self.dialog.label_Notification.setText('Вы уверены что хотите \nдобавить нового пациента?')
@@ -526,9 +564,6 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         patId = cur.fetchall()
         print(patId)
 
-
-        
-
         cur.execute(""" Update Appointment set ID_Pat = (?)
                         WHERE ID_appointment = (?)"""
                                                                 ,(patId[0][0], self.main.dataEditDeliting[4],))
@@ -546,7 +581,7 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         self.NoticeDialog.pushButton.clicked.connect(self.NoticeDialog.closeParent)
 
     def onButtonChange(self):
-        self.dialog = dialogYesOrNo(self)
+        self.dialog = QuestionDialog(self)
         self.dialog.show()
 
         self.dialog.label_Notification.setText('Вы уверены что хотите применить изменения?')
@@ -571,7 +606,7 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         self.NoticeDialog.pushButton.clicked.connect(self.NoticeDialog.closeParent)
 
     def onButtonDel(self):
-        self.dialog = dialogYesOrNo(self)
+        self.dialog = QuestionDialog(self)
         self.dialog.show()
         self.dialog.label_Notification.setText("Вы уверены что хотите удалить запись?")
         self.dialog.label_Data.hide()
@@ -630,9 +665,6 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.setupUi(self)  
         # self.showFullScreen()
 
-        
-        
-
         # self.label_date.setText(datetime.datetime.today().strftime('%d.%m.%Y')) 
         self.label_date.setText('29.11.2023')
 
@@ -662,6 +694,48 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.pushButton_Search.clicked.connect(self.DocFilther)
         self.pushButtonNewDoc.clicked.connect(self.onChooseWhatEdit)
 
+        # self.pushButton_Search_Pat.clicked.connect(self.onButtonSearchPat)
+
+    def onButtonSearchPat(self):
+        pat_name = 'Pat 85'
+        self.tableWidget.clear()
+        cur.execute(""" SELECT Day_appointment FROM Appointment
+                            WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
+                                                WHERE Pat_FIO = (?))
+                            GROUP BY Day_appointment""",(pat_name,))
+        Pac_Data_From_SQL = cur.fetchall()
+
+        for i in range(len(Pac_Data_From_SQL)):
+            cur.execute(""" SELECT Time_appointment, ID_Doc FROM Appointment
+                            WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
+                                                WHERE Pat_FIO = (?))
+                            ORDER BY Time_appointment ASC""",(pat_name,))
+            
+            Time_appointment = cur.fetchall()
+
+            
+
+            item2 = QTableWidgetItem()
+            item2.setText(Pac_Data_From_SQL[0][0])
+            self.tableWidget.setItem(0, i, item2)
+
+            
+
+            for j in range(len(Time_appointment)):
+                item = QTableWidgetItem()
+                 
+                if len(Time_appointment)+2 > self.tableWidget.rowCount():
+                    self.tableWidget.setRowCount(len(Time_appointment)+2)
+
+                cur.execute(""" SELECT Doc_FIO,Spec FROM Doc
+                            WHERE ID_Doc = (?)""",(Time_appointment[j][1],))
+            
+                doc_Fio_Spec = cur.fetchall()
+                print(Time_appointment)
+
+                item.setText('Время - {0}\nВрач - {1}\nСпециальность - {2}'.format(Time_appointment[j][0], doc_Fio_Spec[0][0], doc_Fio_Spec[0][1]))
+                self.tableWidget.setItem(j+2, i, item)
+
     def onChooseWhatEdit(self):
         self.ChooseWhatEdit = ChooseWhatEdit()  
         self.ChooseWhatEdit.show()
@@ -672,7 +746,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.pushButton_Edit_Appointment.setText('Ячейка пуста')
         else:
 
-            Sell_Data_Str = self.tableWidget.item(self.sel_row, self.sel_col ).text()
+            Sell_Data_Str = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text()
             Sell_Data_Split_Str = Sell_Data_Str.split("\n")  
 
             if Sell_Data_Split_Str[1] != '- Свободно':
@@ -680,8 +754,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     self.label_date.text(), 
                     self.tableWidget.item(0, self.sel_col ).text(), 
                     self.tableWidget.item(1, self.sel_col ).text(), 
-                    self.tableWidget.item(self.sel_row, self.sel_col ).text(),
-                    self.tableWidget.item(self.sel_row, self.sel_col ).statusTip()
+                    self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text(),
+                    self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).statusTip()
                     ]
                 self.EditDelitingWindow = EditDelitingWindow(self)
                 self.EditDelitingWindow.show()
@@ -712,7 +786,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.pushButtonUpdateRes.setText('Ячейка пуста')
         else:
 
-            Sell_Data_Str = self.tableWidget.item(self.sel_row, self.sel_col ).text()
+            Sell_Data_Str = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text()
             Sell_Data_Split_Str = Sell_Data_Str.split("\n")  
 
             if Sell_Data_Split_Str[1] != '- Свободно':
@@ -721,47 +795,73 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 ourDate=self.label_date.text()
                 Doc_Spec = self.tableWidget.item(0, self.sel_col ).text()
                 Doc_Fio = self.tableWidget.item(1, self.sel_col ).text()
-                Sell_Data = self.tableWidget.item(self.sel_row, self.sel_col ).text()
-                self.Appointment_Window = Appointment_Window()
+                Sell_Data = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text()
+                self.Appointment_Window = Appointment_Window(self)
                 self.Appointment_Window.show()
 
     def onChangeAppointmentGreenButton(self):
+
         if self.tableWidget.currentItem() == None:
             self.pushButton_change_appointment_green.setText('Ячейка пуста')
         else:
 
-            Sell_Data_Str = self.tableWidget.item(self.sel_row, self.sel_col ).text()
+            Sell_Data_Str = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text()
             Sell_Data_Split_Str = Sell_Data_Str.split("\n")  
-
-            if Sell_Data_Split_Str[1] == '- Свободно':
+            
+            if len(Sell_Data_Split_Str) < 2:
                 self.pushButton_change_appointment_green.setText('Ячейка свободна')
-            elif self.tableWidget.item(self.sel_row, self.sel_col).background().color().getRgb() == (163, 198, 192, 255):
+            elif Sell_Data_Split_Str[1] == '- Свободно':
+                self.pushButton_change_appointment_green.setText('Ячейка свободна')
+            elif self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn()).background().color().getRgb() == (163, 198, 192, 255):
                 self.pushButton_change_appointment_green.setText('Уже установленно\n состояние запись\nне подтверждена')
             else:
-                
-                self.AppointmentCollor = 'запись не подтверждена'
-                self.dialog = NotificationDialog(self)
+                self.AppointmentCollor = "'запись не подтверждена'"
+                self.dialog = QuestionDialog(self)
                 self.dialog.show()
+                
+                self.dialog.label_Notification.setText(self.dialog.label_Notification.text() + self.AppointmentCollor)
+                self.dialog.label_Data.setText(self.dialog.label_Data.text() + self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text())
+                self.dialog.buttonBox.accepted.connect(self.onChangeAppointmentColor)
 
     def onChangeAppointmentBlueButton(self):
         if self.tableWidget.currentItem() == None:
             self.pushButton_change_appointment_blue.setText('Ячейка пуста')
         else:
 
-            Sell_Data_Str = self.tableWidget.item(self.sel_row, self.sel_col ).text()
+            Sell_Data_Str = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text()
             Sell_Data_Split_Str = Sell_Data_Str.split("\n")  
 
-            if Sell_Data_Split_Str[1] == '- Свободно':
+            if len(Sell_Data_Split_Str) < 2:
                 self.pushButton_change_appointment_blue.setText('Ячейка свободна')
-            elif self.tableWidget.item(self.sel_row, self.sel_col).background().color().getRgb() == (98, 111, 222, 255):
+            elif Sell_Data_Split_Str[1] == '- Свободно':
+                self.pushButton_change_appointment_blue.setText('Ячейка свободна')
+            elif self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn()).background().color().getRgb() == (98, 111, 222, 255):
                 self.pushButton_change_appointment_blue.setText('Уже установленно \nсостояние \nзапись подтверждена')
             else:
-                self.AppointmentCollor = 'запись подтверждена'
-                self.dialog = NotificationDialog(self)
+                self.AppointmentCollor = "'запись подтверждена'"
+                self.dialog = QuestionDialog(self)
                 self.dialog.show()
+                
+                self.dialog.label_Notification.setText(self.dialog.label_Notification.text() + self.AppointmentCollor)
+                self.dialog.label_Data.setText(self.dialog.label_Data.text() + self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text())
+                self.dialog.buttonBox.accepted.connect(self.onChangeAppointmentColor)
+
+    def onChangeAppointmentColor(self):
+        
+        if self.AppointmentCollor == "'запись подтверждена'":
+            appointment_Status = 2
+        elif self.AppointmentCollor == "'запись не подтверждена'":
+            appointment_Status = 1
+
+        appointment_Id = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn()).statusTip()
+
+        cur.execute(""" UPDATE Appointment set appointment_status = (?)
+                        WHERE ID_appointment = (?)""",(appointment_Status, appointment_Id,))
+        conn.commit()
+        self.whoseScheduleIsThis()
 
     def onBut_NewRes(self):
-        self.RegWindow = RegWindow()
+        self.RegWindow = RegWindow(self)
         self.RegWindow.show()
         # self.hide()
 
@@ -913,79 +1013,6 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                 
                 # ↓ Вставляем данные в таблицу
                 self.tableWidget.setItem(j+2, i, item)
-
-# OLD tableCleanAndFil
-    # def tableCleanAndFil(self):
-        
-    #     self.tableWidget.clear()
-    #     ourDate = self.label_date.text()
-    #     # ↓ выбираем тип врача и ФИО
-    #     cur.execute("SELECT Spec FROM 'Doc' ORDER BY ID_Doc ASC;")
-    #     medSpec = cur.fetchall()
-    #     cur.execute("SELECT Doc_FIO FROM 'Doc' ORDER BY ID_Doc ASC;")
-    #     docFIO = cur.fetchall()
-    #     # ↑ выбираем тип врача и ФИО
-
-    #     # ↓ 
-    #     # ↑ 
-
-    #     # ↓ забиваем ячейки
-    #     for i in range(len(docFIO)):
-    #         self.tableWidget.setColumnWidth(i, 140)
-
-    #         # ↓ 
-    #         medSpecStr = ''.join(medSpec[i])
-    #         self.tableWidget.setItem(0, i, QtWidgets.QTableWidgetItem(medSpecStr))
-    #         # ↑ 
-    #         # ↓ 
-    #         docFIOStr = ''.join(docFIO[i])
-    #         self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(docFIOStr))
-    #         # ↑ 
-            
-    #         # ↓ забиваем ячейки в столбце
-    #         # ↓ запрос на выдачу ID приёмов
-    #         cur.execute("""SELECT ID_appointment,Time_appointment,appointment_status,ID_Pat FROM Appointment
-    #         WHERE ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = (?))
-    #         AND Day_appointment = (?)
-    #         ORDER BY Time_appointment;""",(docFIOStr,ourDate,))
-    #         # ↓ переформотируем tuple в int/str
-
-    #         # ID_appointment,Time_appointment,appointment_status,ID_Pat # 
-    #         #       0               1               2               3   # 
-    #         CurrentData = cur.fetchall()
-            
-    #         for j in range(len(CurrentData)):
-    #             self.tableWidget.setRowHeight(j+2, 75)
-    #             item = QTableWidgetItem()
- 
- 
-    #             item.setStatusTip(str (CurrentData[j][0]))
-                
-
-    #             Pat_ID = CurrentData[j][3]
-    #             cur.execute("""SELECT Pat_FIO, Phone_num, Pat_Card FROM Patient_card
-    #             WHERE ID_Pat = (?)""",(Pat_ID,))
-                
-    #             PatData = cur.fetchall()
-                
-    #             if PatData[0][2] == 1:
-    #                 item.setText('{0}\n{1} - {2}\n{3}'.format(CurrentData[j][1], PatData[0][0], PatData[0][2], PatData[0][1]))
-    #             elif PatData[0][2] == 0:
-    #                 item.setText('{0}\n{1}\n{2}'.format(CurrentData[j][1], PatData[0][0], PatData[0][1]))
-    #             else:
-    #                 print('Ошибка')
-
-    #             appointmentStatusStr = CurrentData[j][2]
-    #             # ↓ проверка состояния записи, окрашивание ячейки
-    #             if appointmentStatusStr == 0:
-    #                 item.setBackground(QtGui.QColor(255, 126, 147)) #красный    ЗАПИСИ НЕТ 0
-    #             elif  appointmentStatusStr == 1:
-    #                 item.setBackground(QtGui.QColor(163, 198, 192)) # Очень светлый зеленовато-синий запись не подтверждена
-    #             elif  appointmentStatusStr == 2:
-    #                 item.setBackground(QtGui.QColor(98, 111, 222))  # синий ПРИЁМ ЕСТЬ И ЭТО ТОЧНО запись подтверждена
-                
-    #             # ↓ Вставляем данные в таблицу
-    #             self.tableWidget.setItem(j+2, i, item)
                 
 class NoticeDialog(QtWidgets.QDialog, NoticeDialog.Ui_Dialog):
     def __init__(self,root):
@@ -997,7 +1024,6 @@ class NoticeDialog(QtWidgets.QDialog, NoticeDialog.Ui_Dialog):
         self.close()
         self.main.close()
         
-
 def main():
     app = QtWidgets.QApplication(sys.argv)
     window = MainWindow()

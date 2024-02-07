@@ -148,6 +148,13 @@ class Ui_MainWindow(object):
         self.pushButton_Search.setObjectName("pushButton_Search")
         self.verticalLayout_5.addWidget(self.pushButton_Search)
 
+        self.pushButton_Search_Pat = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        self.pushButton_Search_Pat.setMinimumSize(QtCore.QSize(250, 50))
+        self.pushButton_Search_Pat.setMaximumSize(QtCore.QSize(250, 50))
+        self.pushButton_Search_Pat.setObjectName("pushButton_Search_Pat")
+        self.verticalLayout_5.addWidget(self.pushButton_Search_Pat)
+        self.pushButton_Search_Pat.setText('Поиск пациента')
+
         self.pushButtonNewDoc = QtWidgets.QPushButton(self.horizontalLayoutWidget)
         self.pushButtonNewDoc.setMinimumSize(QtCore.QSize(250, 50))
         self.pushButtonNewDoc.setMaximumSize(QtCore.QSize(250, 50))
