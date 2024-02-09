@@ -684,7 +684,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.label_date.setText('29.11.2023')
 
         self.weekdayDefining()
-        
+        self.showMaximized() 
         # # # # # # # # # # # # # # # # # # # # # # # # # # # 
         self.firstFilling()
         # # # # # # # # # # # # # # # # # # # # # # # # # # # 
