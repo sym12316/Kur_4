@@ -172,8 +172,8 @@ class Ui_MainWindow(object):
         self.horizontalLayout.setSpacing(0)
         self.horizontalLayout.setObjectName("horizontalLayout")
         self.pushButtonChangeAppointmentGreen = QtWidgets.QPushButton(self.horizontalLayoutWidget)
-        self.pushButtonChangeAppointmentGreen.setMinimumSize(QtCore.QSize(120, 50))
-        self.pushButtonChangeAppointmentGreen.setMaximumSize(QtCore.QSize(120, 50))
+        self.pushButtonChangeAppointmentGreen.setMinimumSize(QtCore.QSize(120, 75))
+        self.pushButtonChangeAppointmentGreen.setMaximumSize(QtCore.QSize(120, 75))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -181,8 +181,8 @@ class Ui_MainWindow(object):
         self.pushButtonChangeAppointmentGreen.setObjectName("pushButtonChangeAppointmentGreen")
         self.horizontalLayout.addWidget(self.pushButtonChangeAppointmentGreen)
         self.pushButtonChangeAppointmentBlue = QtWidgets.QPushButton(self.horizontalLayoutWidget)
-        self.pushButtonChangeAppointmentBlue.setMinimumSize(QtCore.QSize(120, 50))
-        self.pushButtonChangeAppointmentBlue.setMaximumSize(QtCore.QSize(120, 50))
+        self.pushButtonChangeAppointmentBlue.setMinimumSize(QtCore.QSize(120, 75))
+        self.pushButtonChangeAppointmentBlue.setMaximumSize(QtCore.QSize(120, 75))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)
@@ -232,7 +232,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "ASoRMO v1.0"))
         __sortingEnabled = self.tableWidget.isSortingEnabled()
         self.tableWidget.setSortingEnabled(False)
         self.tableWidget.setSortingEnabled(__sortingEnabled)
@@ -242,12 +242,14 @@ class Ui_MainWindow(object):
         self.pushButtonRightDay.setText(_translate("MainWindow", "День вперёд"))
         self.label_date.setText(_translate("MainWindow", "12.10.2023"))
         self.label_weekday.setText(_translate("MainWindow", "Воскресенье"))
-        self.pushButtonDocSearch.setText(_translate("MainWindow", "Выбор показанных врачей"))
+        self.pushButtonDocSearch.setText(_translate("MainWindow", "Список врачей на день"))
         self.pushButtonUpdateTable.setText(_translate("MainWindow", "Обновить таблицу"))
         self.pushButtonSearchAppointment.setText(_translate("MainWindow", "Поиск свободной записи"))
         self.pushButtonUpdateRes.setText(_translate("MainWindow", "Записать пациента в\nпустую ячейку"))
-        self.pushButtonChangeAppointmentGreen.setText(_translate("MainWindow", "PushButton"))
-        self.pushButtonChangeAppointmentBlue.setText(_translate("MainWindow", "PushButton"))
+
+        self.pushButtonChangeAppointmentGreen.setText(_translate("MainWindow", "Изменить \nстатус \nприёма"))
+        self.pushButtonChangeAppointmentBlue.setText(_translate("MainWindow", "Изменить \nстатус \nприёма"))
+        
         self.pushButtonEditAppointment.setText(_translate("MainWindow", "Редактирование/удаление\nзаписи"))
         self.pushButtonPatientSearch.setText(_translate("MainWindow", "Поиск пациента"))
         self.pushButtonNewDoc.setText(_translate("MainWindow", "Изменение расписания"))

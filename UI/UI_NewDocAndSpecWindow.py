@@ -52,9 +52,13 @@ class Ui_Form(object):
         self.label_Doc_Spec.setAlignment(QtCore.Qt.AlignCenter)
         self.label_Doc_Spec.setObjectName("label_Doc_Spec")
         self.gridLayout.addWidget(self.label_Doc_Spec, 4, 1, 1, 1)
+
         self.comboBox_Doc_Spec = QtWidgets.QComboBox(self.gridLayoutWidget)
         self.comboBox_Doc_Spec.setMinimumSize(QtCore.QSize(200, 50))
         self.comboBox_Doc_Spec.setMaximumSize(QtCore.QSize(200, 50))
+
+        self.comboBox_Doc_Spec.setFont(font)
+
         self.comboBox_Doc_Spec.setObjectName("comboBox_Doc_Spec")
         self.gridLayout.addWidget(self.comboBox_Doc_Spec, 5, 1, 1, 1)
         self.pushButton_Accept_New_Spec = QtWidgets.QPushButton(self.gridLayoutWidget)
@@ -107,7 +111,7 @@ class Ui_Form(object):
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        Form.setWindowTitle(_translate("Form", "Создание врача"))
         self.label_Doc_Spec.setText(_translate("Form", "Выбрать существующую \nспециальность"))
         self.pushButton_Accept_New_Spec.setText(_translate("Form", "Добавить новую \n"
 "специальность"))

@@ -81,8 +81,8 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", "Dialog"))
-        self.pushButtonChangeFilter.setText(_translate("Dialog", "Перейти в поиск \n"))
+        Dialog.setWindowTitle(_translate("Dialog", "Поиск врачей"))
+        self.pushButtonChangeFilter.setText(_translate("Dialog", "Перейти в поиск \n по специальности"))
         self.pushButtonSelect.setText(_translate("Dialog", "Выбрать "))
         self.pushButtonDeselect.setText(_translate("Dialog", "Убрать врача"))
         self.pushButtonApply.setText(_translate("Dialog", "Применить поиск"))

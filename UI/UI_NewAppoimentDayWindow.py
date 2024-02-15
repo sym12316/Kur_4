@@ -185,13 +185,13 @@ class Ui_Form(object):
         self.horizontalLayout.addLayout(self.gridLayout)
         spacerItem11 = QtWidgets.QSpacerItem(20, 20, QtWidgets.QSizePolicy.Fixed, QtWidgets.QSizePolicy.Minimum)
         self.horizontalLayout.addItem(spacerItem11)
-
+        self.pushButton_Help.hide()
         self.retranslateUi(Form)
         QtCore.QMetaObject.connectSlotsByName(Form)
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        Form.setWindowTitle(_translate("Form", "Создание записи"))
         self.label_Doc_Data.setText(_translate("Form", "Дни приёма"))
         self.label_Doc_Num_Step.setText(_translate("Form", "Количество шагов"))
         self.label_Doc_Time.setText(_translate("Form", "Время записи"))

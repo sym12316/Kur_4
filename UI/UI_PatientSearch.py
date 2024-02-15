@@ -42,7 +42,7 @@ class Ui_Form(object):
 
     def retranslateUi(self, Form):
         _translate = QtCore.QCoreApplication.translate
-        Form.setWindowTitle(_translate("Form", "Form"))
+        Form.setWindowTitle(_translate("Form", "Поиск пациента"))
         self.label.setText(_translate("Form", "Введите ФИО искомого пациента:"))
         self.pushButtonSearch.setText(_translate("Form", "Поиск"))
 
