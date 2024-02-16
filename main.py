@@ -19,6 +19,7 @@ from UI import UI_NewAppoimentDayWindow as NewAppoimentDayWindow
 from UI import UI_ChooseWhatEdit as ChooseWhatEdit
 from UI import UI_NoticeDialog as NoticeDialog
 from UI import UI_PatientSearch as PatientSearch
+from UI import UI_DateChoose as DateChoose
 
 from functools import partial
 
@@ -27,11 +28,26 @@ config.read("settings.ini")
 conn = sqlite3.connect(config["General"]["pathToDataBase"])
 cur = conn.cursor()
 
-# conn = sqlite3.connect(r'DB/SAR.DB')
-# cur = conn.cursor()
-                                        # , MainWindow.Ui_MainWindow
+class DateChoose(QtWidgets.QDialog, DateChoose.Ui_Form):
+    def __init__(self, root):
+        super().__init__(root)
+        
+        self.setupUi(self)
 
-                                        
+        self.MainWindow = root
+
+        self.calendarWidget.activated.connect(self.activatedDate)
+        self.pushButton.clicked.connect(self.sendDateToMainWindow)
+        
+    def activatedDate(self):
+        self.dateEdit.setDate(datetime.datetime.strptime(self.calendarWidget.selectedDate().toString('dd.MM.yyyy'), '%d.%m.%Y'))
+
+
+
+    def sendDateToMainWindow(self):
+        ourDate = self.dateEdit.text()
+        self.MainWindow.setDate(ourDate)
+
 class PatientSearch(QtWidgets.QDialog, PatientSearch.Ui_Form):
     def __init__(self, root):
         super().__init__(root)
@@ -682,7 +698,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         # self.setWindowIcon(QtGui.QIcon('icon.png'))
         
         self.weekdayDefining()
-        # self.showMaximized() 
+        self.showMaximized() 
         
         self.firstFilling()
 
@@ -693,7 +709,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         self.pushButtonSearchAppointment.clicked.connect(self.onButtonNewRes)
         self.pushButtonUpdateTable.clicked.connect(self.whoseScheduleIsThis)
-        
+        self.pushButtonDateChoose.clicked.connect(self.onButtonDateChoose)
         self.pushButtonEditAppointment.clicked.connect(self.onButtonEditAppointment)
         
         self.pushButtonUpdateRes.clicked.connect(self.onButtonUpdateRes)
@@ -706,6 +722,18 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.pushButtonNewDoc.clicked.connect(self.onChooseWhatEdit)
 
         self.pushButtonPatientSearch.clicked.connect(self.onButtonPatientSearch)
+
+    def onButtonDateChoose(self):
+        self.DateChoose = DateChoose(self)
+        self.DateChoose.show()
+
+        # self.DateChoose.pushButton.clicked.connect(self.setDate(self.DateChoose.dateEdit.text()))
+
+    def setDate(self,ourDate):
+        
+        self.label_date.setText(ourDate)
+        self.weekdayDefining()
+        self.tableFillSpec()
 
     def onButtonPatientSearch(self):
         self.PatientSearch = PatientSearch(self)

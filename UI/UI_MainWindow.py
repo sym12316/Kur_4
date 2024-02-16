@@ -88,6 +88,14 @@ class Ui_MainWindow(object):
         self.pushButtonRightWeek.setFont(font)
         self.pushButtonRightWeek.setObjectName("pushButtonRightWeek")
         self.gridLayoutDateButton.addWidget(self.pushButtonRightWeek, 1, 6, 1, 1)
+
+        self.pushButtonDateChoose = QtWidgets.QPushButton(self.horizontalLayoutWidget)
+        self.pushButtonDateChoose.setMinimumSize(QtCore.QSize(250, 60))
+        self.pushButtonDateChoose.setMaximumSize(QtCore.QSize(250, 60))
+        self.pushButtonDateChoose.setFont(font)
+        self.pushButtonDateChoose.setObjectName("pushButtonDateChoose")
+        self.gridLayoutAll.addWidget(self.pushButtonDateChoose, 1, 1, 1, 1)
+
         self.pushButtonRightDay = QtWidgets.QPushButton(self.horizontalLayoutWidget)
         self.pushButtonRightDay.setMinimumSize(QtCore.QSize(140, 60))
         self.pushButtonRightDay.setMaximumSize(QtCore.QSize(140, 60))
@@ -99,6 +107,8 @@ class Ui_MainWindow(object):
         self.gridLayoutDateButton.addWidget(self.pushButtonRightDay, 1, 5, 1, 1)
         spacerItem4 = QtWidgets.QSpacerItem(40, 20, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
         self.gridLayoutDateButton.addItem(spacerItem4, 1, 7, 1, 1)
+        
+        
         self.verticalLayout = QtWidgets.QVBoxLayout()
         self.verticalLayout.setObjectName("verticalLayout")
         self.label_date = QtWidgets.QLabel(self.horizontalLayoutWidget)
@@ -232,10 +242,11 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "ASoRMO v1.0"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "ASoRMO v1.0.4"))
         __sortingEnabled = self.tableWidget.isSortingEnabled()
         self.tableWidget.setSortingEnabled(False)
         self.tableWidget.setSortingEnabled(__sortingEnabled)
+        self.pushButtonDateChoose.setText(_translate("MainWindow", "Выбор даты"))
         self.pushButtonLeftWeek.setText(_translate("MainWindow", "Неделя назад"))
         self.pushButtonLeftDay.setText(_translate("MainWindow", "День назад"))
         self.pushButtonRightWeek.setText(_translate("MainWindow", "Неделя вперёд"))
