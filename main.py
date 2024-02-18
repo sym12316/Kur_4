@@ -20,12 +20,23 @@ from UI import UI_ChooseWhatEdit as ChooseWhatEdit
 from UI import UI_NoticeDialog as NoticeDialog
 from UI import UI_PatientSearch as PatientSearch
 from UI import UI_DateChoose as DateChoose
+from UI import UI_DelDocOrDay as DelDocOrDay
 
 from functools import partial
 
 config = configparser.ConfigParser()
 config.read("settings.ini")
-conn = sqlite3.connect(config["General"]["pathToDataBase"])
+
+check = config["General"]["pathCheck"]
+
+if check == 'disable':
+    conn = sqlite3.connect(r'\\User-пк\Общая\DataBase\SAR.db')
+elif check == 'debug':
+    conn = sqlite3.connect(r'DB/SAR.db')
+else:
+    path = config["General"]["pathToDataBase"]
+    conn = sqlite3.connect(path)
+
 cur = conn.cursor()
 
 class DateChoose(QtWidgets.QDialog, DateChoose.Ui_Form):
@@ -485,7 +496,6 @@ class ChooseWhatEdit(QtWidgets.QMainWindow, ChooseWhatEdit.Ui_Form):
     def __init__(self,):
         super().__init__()
         self.setupUi(self)
-        self.pushButton_Cansel.clicked.connect(lambda:self.close())
 
 class NewDocAndSpecWindow(QtWidgets.QMainWindow, NewDocAndSpecWindow.Ui_Form):
     def __init__(self, root):
@@ -688,6 +698,77 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         elif CurrentData[0][3] == 0:
             self.checkBox_Appointment.setCheckState(0)
 
+class DelDay(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
+    def __init__(self, root):
+        super().__init__(root)
+
+        self.setupUi(self) 
+
+        self.MainWindow = root 
+        self.label_Up.setText('Выберете врача')
+        self.label_Down.setText('Введите дату и время в \nформате: дд.мм.гггг чч.мм')
+        
+        
+        cur.execute(""" SELECT ID_Doc, Spec, Doc_FIO FROM Doc
+                            ORDER BY ID_Doc""")
+        DocData = cur.fetchall()
+        
+        for i in range(len(DocData)):
+            text = "{0}. {1} - {2}".format(DocData[i][0], DocData[i][1], DocData[i][2])
+            self.comboBox.addItem(text)
+        self.pushButton_Accept.clicked.connect(self.DelDayCheck)
+
+    def DelDayCheck(self):
+
+        text = self.textEdit.toPlainText().split(' ')
+        docId = self.comboBox.currentText().split('.')
+
+        self.NoticeDialog = NoticeDialog(self)
+        self.NoticeDialog.show()
+
+        if len(text) == 2:
+            cur.execute(""" SELECT ID_appointment FROM Appointment
+                                WHERE ID_doc = (?)
+                                AND Day_appointment = (?)
+                                AND Time_appointment = (?)""",(docId[0], text[0], text[1] ,))
+            self.foundAppoinment = cur.fetchall()
+
+            if self.foundAppoinment == []:
+                self.NoticeDialog.label.setText('Запись не найдена!')
+                
+            elif len(self.foundAppoinment) > 1:
+                self.NoticeDialog.label.setText('Ошибка!\nОбнаружено несколько записей!')
+
+            elif len(self.foundAppoinment) == 1:
+                self.NoticeDialog.close()
+                self.QuestionDialog = QuestionDialog(self)
+                self.QuestionDialog.label_Notification.setText("Вы точно хотите удалить запись?")
+                self.QuestionDialog.label_Data.hide()
+                self.QuestionDialog.show()
+                
+                self.QuestionDialog.buttonBox.accepted.connect(self.DelAppoinment)
+
+        else:
+            
+            self.NoticeDialog.label.setText('Ошибка ввода даты')
+    
+    def DelAppoinment(self):
+        cur.execute(""" DELETE FROM Appointment
+                                    WHERE ID_appointment = (?)""",(self.foundAppoinment[0][0], ))
+        conn.commit()
+        self.NoticeDialog = NoticeDialog(self)
+        
+        self.NoticeDialog.show()
+        self.NoticeDialog.label.setText('Запись удалена!')
+
+class DelDoc(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
+    def __init__(self, root):
+        super().__init__(root)
+
+        self.setupUi(self) 
+
+        self.MainWindow = root 
+
 class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def __init__(self):
         super().__init__()
@@ -886,10 +967,22 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         self.ChooseWhatEdit.pushButton_New_Appoinment.clicked.connect(self.ChooseWhatEditonButtonNewAppoinment)
         self.ChooseWhatEdit.pushButton_New_Doc.clicked.connect(self.ChooseWhatEditonButtonNewDoc)
+        self.ChooseWhatEdit.pushButton_Del_Doc.clicked.connect(self.ChooseWhatEditonButtonDelDoc)
+        self.ChooseWhatEdit.pushButton_Del_Appoinment.clicked.connect(self.ChooseWhatEditonButtonDelAppoinment)
 
     def ChooseWhatEditonButtonNewDoc(self):
         self.NewDocAndSpecWindow = NewDocAndSpecWindow(self)  
         self.NewDocAndSpecWindow.show()
+        self.ChooseWhatEdit.close()
+
+    def ChooseWhatEditonButtonDelDoc(self):
+        self.DelDoc = DelDoc(self)  
+        self.DelDoc.show()
+        self.ChooseWhatEdit.close()
+
+    def ChooseWhatEditonButtonDelAppoinment(self):
+        self.DelDay = DelDay(self)  
+        self.DelDay.show()
         self.ChooseWhatEdit.close()
 
     def ChooseWhatEditonButtonNewAppoinment(self):

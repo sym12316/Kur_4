@@ -41,7 +41,7 @@ class Ui_Dialog(object):
 
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
-        Dialog.setWindowTitle(_translate("Dialog", ""))
+        Dialog.setWindowTitle(_translate("Dialog", " "))
         self.label.setText(_translate("Dialog", "Новый врач успешно \n"
 "добавлен!"))
         self.pushButton.setText(_translate("Dialog", "OK"))
