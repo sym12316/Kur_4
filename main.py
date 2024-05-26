@@ -1,15 +1,16 @@
 import sys 
-import sqlite3 
 import datetime
 import configparser
 from datetime import date
+from mysql.connector import connect, Error
+import mysql.connector
 
 from PyQt5 import QtGui, QtWidgets
 from PyQt5.QtWidgets import QTableWidgetItem
 from PyQt5.QtCore import Qt
 
-from UI import UI_DocFilther as DocFilther
 from UI import UI_MainWindow as MainWindow
+from UI import UI_DocFilther as DocFilther
 from UI import UI_NewAppointmentCellWindow as newAppointmentCellWindow
 from UI import UI_EditDelitingWindow as EditDelitingWindow
 from UI import UI_QuestionDialog as QuestionDialog
@@ -21,23 +22,9 @@ from UI import UI_NoticeDialog as NoticeDialog
 from UI import UI_PatientSearch as PatientSearch
 from UI import UI_DateChoose as DateChoose
 from UI import UI_DelDocOrDay as DelDocOrDay
+from UI import UI_LogWindow as LogWindow
 
 from functools import partial
-
-config = configparser.ConfigParser()
-config.read("settings.ini")
-
-check = config["General"]["pathCheck"]
-
-if check == 'disable':
-    conn = sqlite3.connect(r'\\User-пк\Общая\DataBase\SAR.db')
-elif check == 'debug':
-    conn = sqlite3.connect(r'DB/SAR.db')
-else:
-    path = config["General"]["pathToDataBase"]
-    conn = sqlite3.connect(path)
-
-cur = conn.cursor()
 
 class DateChoose(QtWidgets.QDialog, DateChoose.Ui_Form):
     def __init__(self, root):
@@ -93,7 +80,7 @@ class newAppointmentCellWindow(QtWidgets.QMainWindow, newAppointmentCellWindow.U
 
     def PacFIO(self):
         currentPacFIO = self.textEdit_Pac_Fio.toPlainText() 
-
+        cursor = connection.cursor()
         if currentPacFIO == "":
             self.labelStatus.setText("Введите ФИО пациента!")
             self.PacFIO
@@ -103,16 +90,23 @@ class newAppointmentCellWindow(QtWidgets.QMainWindow, newAppointmentCellWindow.U
             self.NoticeDialog.label.setText('')
 
             currentPacFIO = self.textEdit_Pac_Fio.toPlainText()
-            cur.execute(""" SELECT Pat_FIO,ID_Pat FROM Patient_card
-                            WHERE Pat_FIO = (?)""",(currentPacFIO,))
-            Pac_Data_From_SQL = cur.fetchall()
-            
+
+            requets = """SELECT Pat_FIO,ID_Pat FROM Patient_card
+                            WHERE Pat_FIO = %s"""
+            into = [currentPacFIO]
+            cursor.execute(requets, into)
+            Pac_Data_From_SQL = cursor.fetchall()
+
             if Pac_Data_From_SQL != []:
                 # if self.checkBox_Appointment.isChecked() == 1:
                 self.PacID = Pac_Data_From_SQL[0][1]
-                cur.execute(""" UPDATE Patient_card set Pat_Card = 1 
-                                WHERE ID_Pat = (?)""",(self.PacID,))
-                conn.commit()
+
+                requets = """UPDATE Patient_card set Pat_Card = 1 
+                                WHERE ID_Pat = %s"""
+                into = [self.PacID]
+                cursor.execute(requets, into)
+                connection.commit()
+
                 self.PacRegistration()
 
                 # else: 
@@ -122,23 +116,30 @@ class newAppointmentCellWindow(QtWidgets.QMainWindow, newAppointmentCellWindow.U
                 #     # self.pushButton_Appointment.clicked.connect(self.PacRegistration)
                 #     self.PacRegistration()
 
-
             else:
                 if self.checkBox_Appointment.isChecked() == 1:
-                    
-                    cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num, Pat_Card) VALUES(?,?,1);""",(currentPacFIO, self.textEditl_Pac_Num.toPlainText(),))
-                    
+
+                    requets = """INSERT INTO Patient_card(Pat_FIO, Phone_num, Pat_Card) VALUES(%s,%s,1)"""
+                    into = [currentPacFIO, self.textEditl_Pac_Num.toPlainText()]
+                    cursor.execute(requets, into)
                     self.NoticeDialog.label.setText('Добавленна запись для\nсуществующего пациент.')
                 else: 
-                    cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num) VALUES(?,?);""",(currentPacFIO, self.textEditl_Pac_Num.toPlainText(),))
+                    
+                    requets = """INSERT INTO Patient_card(Pat_FIO, Phone_num) VALUES(%s,%s)"""
+                    into = [currentPacFIO, self.textEditl_Pac_Num.toPlainText()]
+                    cursor.execute(requets, into)
+                    
                     self.NoticeDialog.label.setText('Добавлен новый пациент.')
 
-                conn.commit()
+                connection.commit()
 
-                cur.execute(""" SELECT ID_Pat FROM Patient_card 
-                                WHERE Pat_FIO = (?)
-                                AND Phone_num = (?) """,(currentPacFIO, self.textEditl_Pac_Num.toPlainText(),))
-                ID_Pat = cur.fetchall()
+                requets = """SELECT ID_Pat FROM Patient_card 
+                                WHERE Pat_FIO = %s
+                                AND Phone_num = %s"""
+                into = [currentPacFIO, self.textEditl_Pac_Num.toPlainText()]
+                cursor.execute(requets, into)
+                ID_Pat = cursor.fetchall()
+
                 self.PacID = int(''.join(map(str,ID_Pat[0])))
 
                 self.PacRegistration()
@@ -146,21 +147,29 @@ class newAppointmentCellWindow(QtWidgets.QMainWindow, newAppointmentCellWindow.U
 
     def PacRegistration(self):
         # вставляем : PacID 
-
+        cursor = connection.cursor()
         self.labelStatus.setText('')
 
-        cur.execute("""SELECT ID_appointment FROM Appointment 
+        requets = """SELECT ID_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
-                            WHERE Doc_FIO = (?)) 
-                        AND Day_appointment = (?)
-                        AND Time_appointment =(?)
-                        AND appointment_status = 0""",(self.MainWindow.Doc_Fio, self.MainWindow.ourDate, self.Num_Fio_Pac[0],))
-        IDAppointment = cur.fetchall()
+                            WHERE Doc_FIO = %s) 
+                        AND Day_appointment = %s
+                        AND Time_appointment =%s
+                        AND appointment_status = 0"""
+                        
+        into = [self.MainWindow.Doc_Fio, self.MainWindow.ourDate, self.Num_Fio_Pac[0]]
+        cursor.execute(requets, into)
+        IDAppointment = cursor.fetchall()
+
         currentIDAppointment = int(''.join(map(str,IDAppointment[0])))
         
-        cur.execute("""UPDATE Appointment set ID_Pat = (?) ,appointment_status = 1 WHERE ID_appointment = (?)""",(self.PacID, currentIDAppointment,))
-        conn.commit()
         
+        requets = """UPDATE Appointment set ID_Pat = %s ,appointment_status = 1 WHERE ID_appointment = %s"""
+        into = [self.PacID, currentIDAppointment]
+        cursor.execute(requets, into)
+
+        connection.commit()
+        print(self.PacID, currentIDAppointment)
         self.NoticeDialog.label.setText(self.NoticeDialog.label.text()+'\nЗапись успешно добавлена!')
 
         self.NoticeDialog.show()
@@ -175,8 +184,11 @@ class SearchFreeAppointment(QtWidgets.QMainWindow, SearchFreeAppointment.Ui_Form
         self.MainWindow = root
         self.ButtonsHide()
 
-        cur.execute("""SELECT Doc_FIO FROM Doc ORDER BY Doc_FIO ASC""",())
-        docFIO = cur.fetchall()
+        cursor = connection.cursor()
+
+        requets = """SELECT Doc_FIO FROM Doc ORDER BY Doc_FIO ASC"""
+        cursor.execute(requets)
+        docFIO = cursor.fetchall()
         # ↓ переформотируем tuple в int/str
         for i in range(len(docFIO)):
             self.comboBoxDoc.addItem(str(docFIO[i][0]))
@@ -188,23 +200,22 @@ class SearchFreeAppointment(QtWidgets.QMainWindow, SearchFreeAppointment.Ui_Form
         self.ButtonsHide()
         self.comboBoxDate.clear()
         
-        cur.execute("""SELECT Day_appointment FROM Appointment 
+        cursor = connection.cursor()
+
+        requets = """SELECT Day_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
-                            WHERE Doc_FIO = (?))
+                            WHERE Doc_FIO = %s)
                         AND appointment_status = 0 
                         GROUP BY Day_appointment
-                        ORDER BY Day_appointment ASC""",(self.comboBoxDoc.currentText(),))
-        DayAppointment = cur.fetchall()
+                        ORDER BY Day_appointment ASC"""
+        into = [self.comboBoxDoc.currentText()]
+        cursor.execute(requets, into)
+        DayAppointment = cursor.fetchall()
 
         if len(DayAppointment) == 0:
             self.labelStatus.setText('Свободных дней нет')
         else:
             for i in range(len(DayAppointment)):
-                # print(DayAppointment[i][0])
-                # asd = datetime.datetime.strptime(DayAppointment[i][0], '%d.%m.%Y')
-                # print(asd)
-                # print(self.weekdayDefining(datetime.datetime.strptime(str(DayAppointment[i][0]), '%d.%m.%Y')))
-                
                 self.comboBoxDate.addItem(self.weekdayDefining(datetime.datetime.strptime(str(DayAppointment[i][0]), '%d.%m.%Y')))
 
         self.comboBoxDate.activated.connect(self.comboBox_Time_Filling)
@@ -237,13 +248,17 @@ class SearchFreeAppointment(QtWidgets.QMainWindow, SearchFreeAppointment.Ui_Form
         self.currentDateStr = self.comboBoxDate.currentText().split(' ')
         self.currentDateStr = self.currentDateStr[0]
         
-        cur.execute("""SELECT Time_appointment FROM Appointment 
+        cursor = connection.cursor()
+
+        requets = """SELECT Time_appointment FROM Appointment 
                         WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
-                            WHERE Doc_FIO = (?)) 
-                        AND Day_appointment = (?)
+                            WHERE Doc_FIO = %s) 
+                        AND Day_appointment = %s
                         AND appointment_status = 0
-                        ORDER BY Time_appointment ASC""",(self.comboBoxDoc.currentText(),self.currentDateStr,))
-        TimeAppointment = cur.fetchall()
+                        ORDER BY Time_appointment ASC"""
+        into = [self.comboBoxDoc.currentText(),self.currentDateStr]
+        cursor.execute(requets, into)
+        TimeAppointment = cursor.fetchall()
         
         if len(TimeAppointment) == 0:
             self.labelStatus.setText('Свободных часов нет')
@@ -268,6 +283,9 @@ class SearchFreeAppointment(QtWidgets.QMainWindow, SearchFreeAppointment.Ui_Form
 
     def PacFIO(self):
         self.labelStatus.setText("")
+
+        cursor = connection.cursor()
+
         if self.textEditFIO.toPlainText()  == "":
             self.labelStatus.setText("Введите ФИО пациента!")
         elif self.textEditFIO_2.toPlainText() == "":
@@ -276,45 +294,49 @@ class SearchFreeAppointment(QtWidgets.QMainWindow, SearchFreeAppointment.Ui_Form
             # Проверка существования пациента
             self.PacID()
             if len(self.PacId) == 0:
-                cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num) 
-                                VALUES(?,?);""",(
-                                            self.textEditFIO.toPlainText(), 
-                                            self.textEditFIO_2.toPlainText(),))
-                conn.commit()
+                requets = """INSERT INTO Patient_card(Pat_FIO, Phone_num) 
+                                VALUES(%s,%s)"""
+                into = [self.textEditFIO.toPlainText(), self.textEditFIO_2.toPlainText()]
+                cursor.execute(requets, into)
+                connection.commit()
                 self.PacID()
                 
             self.PacRegistration()
 
     def PacID(self):
-        cur.execute(""" SELECT ID_Pat FROM Patient_card 
-                                        WHERE Pat_FIO = (?) 
-                                        AND Phone_num = (?)""",(
-                                            self.textEditFIO.toPlainText(), 
-                                            self.textEditFIO_2.toPlainText(),))
-        self.PacId = cur.fetchall()
+        cursor = connection.cursor()
+
+        requets = """SELECT ID_Pat FROM Patient_card 
+                                        WHERE Pat_FIO = %s 
+                                        AND Phone_num = %s"""
+        into = [self.textEditFIO.toPlainText(), self.textEditFIO_2.toPlainText()]
+        cursor.execute(requets, into)
+        self.PacId = cursor.fetchall()
         
     def PacRegistration(self):
         # вставляем : PacID в AppoinmentTable
 
         self.comboBoxTime.currentText()
 
-        cur.execute(""" SELECT ID_appointment FROM Appointment 
+        cursor = connection.cursor()
+
+        requets = """SELECT ID_appointment FROM Appointment 
                             WHERE ID_Doc = (SELECT ID_Doc FROM Doc 
-                                            WHERE Doc_FIO = (?)) 
-                            AND Day_appointment = (?)
-                            AND Time_appointment =(?)
-                            AND appointment_status = 0""",(
-                                self.comboBoxDoc.currentText(), 
-                                self.currentDateStr, 
-                                self.comboBoxTime.currentText(),))
-        IDAppointment = cur.fetchall()
+                                            WHERE Doc_FIO = %s) 
+                            AND Day_appointment = %s
+                            AND Time_appointment = %s
+                            AND appointment_status = 0"""
+        into = [self.comboBoxDoc.currentText(), self.currentDateStr, self.comboBoxTime.currentText()]
+        cursor.execute(requets, into)
+        IDAppointment = cursor.fetchall()
         
-        cur.execute(""" UPDATE Appointment 
-                            set ID_Pat = (?) ,appointment_status = 1 
-                            WHERE ID_appointment = (?)""",(
-                                    self.PacId[0][0], 
-                                    IDAppointment[0][0],))
-        conn.commit()
+        requets = """UPDATE Appointment 
+                            set ID_Pat = %s,
+                            appointment_status = 1 
+                            WHERE ID_appointment = %s"""
+        into = [self.PacId[0][0], IDAppointment[0][0]]
+        cursor.execute(requets, into)
+        connection.commit()
         self.Notice = NoticeDialog(self)
         self.Notice.show()
         self.Notice.label.setText("Новый пациент успешно добавлен!")
@@ -382,25 +404,32 @@ class DocFilther(QtWidgets.QDialog, DocFilther.Ui_Dialog):
         self.pushButtonChangeFilter.setText("Перейти в поиск\nпо специальности")
         self.pushButtonSelect.setText("Выбрать врача")
         self.pushButtonDeselect.setText("Убрать врача")
-        cur.execute("SELECT Spec FROM 'Doc' GROUP BY Spec ORDER BY ID_Doc ASC;")
-        docSpec = cur.fetchall()
         
+        cursor = connection.cursor()
+
+        requets = """SELECT Spec FROM Doc GROUP BY Spec"""
+        cursor.execute(requets)
+        docSpec = cursor.fetchall()
+
         self.tableWidget.setColumnCount(len(docSpec))
         
-        cur.execute("""SELECT count(Doc_FIO) FROM Doc
-                    GROUP BY Spec""")
-        numberRow = str(max(cur.fetchall()))
+        requets = """SELECT count(Doc_FIO) FROM Doc
+                    GROUP BY Spec"""
+        cursor.execute(requets)
+        numberRow = str(max(cursor.fetchall()))
         self.tableWidget.setRowCount(int(numberRow.replace(',','').replace('(','').replace(')',''))+1)
         for i in range(len(docSpec)):
             item = QTableWidgetItem()
             item.setBackground(QtGui.QColor(240, 240, 240))
             item.setText(str(docSpec[i][0]))
             
-            cur.execute(""" SELECT Doc_FIO FROM 'Doc'
-                            WHERE Spec = (?)
-                            ORDER BY ID_Doc ASC;""", (str(docSpec[i][0]),))
-            docFIO = cur.fetchall()
-            # self.tableWidget.setColumnCount(len(docSpec)+1)
+            requets = """SELECT Doc_FIO FROM Doc
+                            WHERE Spec = %s
+                            ORDER BY ID_Doc ASC"""
+            into = [str(docSpec[i][0])]
+            cursor.execute(requets, into)
+            docFIO = cursor.fetchall()
+
             self.tableWidget.setItem(0,i, item)
 
             for j in range(len(docFIO)):
@@ -416,8 +445,12 @@ class DocFilther(QtWidgets.QDialog, DocFilther.Ui_Dialog):
         self.pushButtonChangeFilter.setText("Перейти в поиск \nпо врачам")
         self.pushButtonSelect.setText("Выбрать специальность")
         self.pushButtonDeselect.setText("Убрать специальность")
-        cur.execute("SELECT Spec FROM 'Doc' GROUP BY Spec ORDER BY ID_Doc ASC;")
-        docSpec = cur.fetchall()
+
+        cursor = connection.cursor()
+
+        requets = """SELECT Spec FROM Doc GROUP BY Spec"""
+        cursor.execute(requets)
+        docSpec = cursor.fetchall()
         
         self.tableWidget.setRowCount(len(docSpec))
         self.tableWidget.setColumnCount(1)
@@ -436,9 +469,13 @@ class NewAppoimentDayWindow(QtWidgets.QMainWindow, NewAppoimentDayWindow.Ui_Form
         self.setupUi(self)
 
         self.MainWindow = root
+        
+        cursor = connection.cursor()
 
-        cur.execute("""SELECT Spec FROM Doc GROUP BY Spec""",())
-        docSpec = cur.fetchall()
+        requets ="""SELECT Spec FROM Doc GROUP BY Spec"""
+        cursor.execute(requets)
+        docSpec = cursor.fetchall()
+
         # ↓ переформотируем tuple в int/str
         for i in range(len(docSpec)):
             docSpecStr = ''.join(docSpec[i])
@@ -454,20 +491,31 @@ class NewAppoimentDayWindow(QtWidgets.QMainWindow, NewAppoimentDayWindow.Ui_Form
 
     def comboBox_Doc_Fio_Filling(self):
         self.comboBox_Doc_Fio.clear()
-        cur.execute("""SELECT Doc_FIO FROM Doc
-                        WHERE Spec = (?)""",(self.comboBox_Doc_Spec.currentText(),))
-        docFIO = cur.fetchall()
+
+        cursor = connection.cursor()
+
+        requets = """SELECT Doc_FIO FROM Doc
+                        WHERE Spec = %s"""
+        into = [self.comboBox_Doc_Spec.currentText()]
+        cursor.execute(requets, into)
+
+        docFIO = cursor.fetchall()
+
         for i in range(len(docFIO)):
             docFIOStr = ''.join(docFIO[i])
             # self.comboBox = self.comboBoxDoc
             self.comboBox_Doc_Fio.addItem(docFIOStr)
 
     def onButton_Accept_New_Day(self):
-        
-        cur.execute(""" SELECT ID_Doc FROM Doc
-                        WHERE   Spec = (?) 
-                        AND     Doc_FIO = (?)""",(self.comboBox_Doc_Spec.currentText(), self.comboBox_Doc_Fio.currentText(),))
-        docId = cur.fetchall()
+
+        cursor = connection.cursor()
+
+        requets = """SELECT ID_Doc FROM Doc
+                        WHERE   Spec = %s 
+                        AND     Doc_FIO = %s"""
+        into = [self.comboBox_Doc_Spec.currentText(), self.comboBox_Doc_Fio.currentText()]
+        cursor.execute(requets, into)
+        docId = cursor.fetchall()
 
         if self.textEdit_Doc_Date.toPlainText() =='':
             self.label_Doc_Data.setText("Укажите дни приёма!")
@@ -482,10 +530,11 @@ class NewAppoimentDayWindow(QtWidgets.QMainWindow, NewAppoimentDayWindow.Ui_Form
                     time2 = datetime.datetime.strptime(time, '%H:%M') + datetime.timedelta(minutes = self.spinBox_Time_Step.value()*i)
                     
                     
-                    cur.execute(""" INSERT INTO Appointment(Day_appointment, Time_appointment, ID_Pat, ID_Doc, appointment_status) 
-                                VALUES(?, ?, 0, ?, 0);
-                                """,(days[d],time2.strftime('%H:%M'),docId[0][0],))
-                    conn.commit()
+                    requets = """INSERT INTO Appointment(Day_appointment, Time_appointment, ID_Pat, ID_Doc, appointment_status) 
+                                VALUES(%s, %s, 1, %s, 0)"""
+                    into = [days[d],time2.strftime('%H:%M'),docId[0][0]]
+                    cursor.execute(requets, into)
+                    connection.commit()
             self.Notice = NoticeDialog(self)
             self.Notice.show()
             self.Notice.label.setText('Новые записи успешно добавленны!')
@@ -502,27 +551,39 @@ class NewDocAndSpecWindow(QtWidgets.QMainWindow, NewDocAndSpecWindow.Ui_Form):
         super().__init__(root)
         self.setupUi(self)
         
+        cursor = connection.cursor()
+
         self.MainWindow = root
         
         self.pushButton_Accept_New_Doc.clicked.connect(self.onButton_Accept_New_Doc_Check)
         self.pushButton_Accept_New_Spec.clicked.connect(self.onButton_Accept_New_Spec_Check)
         
-        cur.execute("""SELECT Spec FROM Doc GROUP BY Spec""",())
-        docSpec = cur.fetchall()
+        requets = """SELECT Spec FROM Doc GROUP BY Spec"""
+        cursor.execute(requets)
+        docSpec = cursor.fetchall()
         for i in range(len(docSpec)):
             docSpecStr = ''.join(docSpec[i])
             self.comboBox_Doc_Spec.addItem(docSpecStr)
 
     def onButton_Accept_New_Doc_Check(self):
+
+        cursor = connection.cursor()
+        
         if self.textEdit_Doc_Fio.toPlainText() != '':
             
-            cur.execute(""" INSERT INTO Doc(Doc_FIO,Spec) 
-                            VALUES(?,?);""",(self.textEdit_Doc_Fio.toPlainText(), self.comboBox_Doc_Spec.currentText(),))
-            conn.commit()
-            cur.execute(""" SELECT  Doc_FIO,Spec FROM Doc 
-                            WHERE   Doc_FIO = (?)
-                            AND     Spec = (?);""",(self.textEdit_Doc_Fio.toPlainText(), self.comboBox_Doc_Spec.currentText(),))
-            fillingCheck = cur.fetchall()
+            requets = """INSERT INTO Doc(Doc_FIO,Spec) 
+                            VALUES(%s,%s)"""
+            into = [self.textEdit_Doc_Fio.toPlainText(), self.comboBox_Doc_Spec.currentText()]
+            cursor.execute(requets, into)
+            connection.commit()
+
+            requets = """SELECT  Doc_FIO,Spec FROM Doc 
+                            WHERE   Doc_FIO = %s
+                            AND     Spec = %s"""
+            into = [self.textEdit_Doc_Fio.toPlainText(), self.comboBox_Doc_Spec.currentText()]
+            cursor.execute(requets, into)
+            fillingCheck = cursor.fetchall()
+
             if len(fillingCheck) != 0:
                 self.NoticeDialog = NoticeDialog(self)  
                 self.NoticeDialog.show()
@@ -537,16 +598,23 @@ class NewDocAndSpecWindow(QtWidgets.QMainWindow, NewDocAndSpecWindow.Ui_Form):
             self.pushButton_Accept_New_Doc.setText('Добавить Врача\nВведите ФИО')
 
     def onButton_Accept_New_Spec_Check(self):
-        # self.textEdit_New_Spec
+        
+        cursor = connection.cursor()
+        
         if self.textEdit_New_Spec.toPlainText() != '':
             
-            cur.execute(""" INSERT INTO Doc(Doc_FIO,Spec) 
-                            VALUES(?,?);""",(self.textEdit_Doc_Fio.toPlainText(), self.textEdit_New_Spec.toPlainText(),))
-            conn.commit()
-            cur.execute(""" SELECT  Doc_FIO,Spec FROM Doc 
-                            WHERE   Doc_FIO = (?)
-                            AND     Spec = (?);""",(self.textEdit_Doc_Fio.toPlainText(), self.textEdit_New_Spec.toPlainText(),))
-            fillingCheck = cur.fetchall()
+            requets = """INSERT INTO Doc(Doc_FIO,Spec) 
+                            VALUES(%s,%s)"""
+            into = [self.textEdit_Doc_Fio.toPlainText(), self.textEdit_New_Spec.toPlainText()]
+            cursor.execute(requets, into)
+            connection.commit()
+
+            requets = """SELECT  Doc_FIO,Spec FROM Doc 
+                            WHERE   Doc_FIO = %s
+                            AND     Spec = %s"""
+            into = [self.textEdit_Doc_Fio.toPlainText(), self.textEdit_New_Spec.toPlainText()]
+            cursor.execute(requets, into)
+            fillingCheck = cursor.fetchall()
             if len(fillingCheck) != 0:
                 self.NoticeDialog = NoticeDialog(self)  
                 self.NoticeDialog.show()
@@ -586,31 +654,36 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
     def newPatient(self):
         self.dialog.close()
 
-        cur.execute(""" INSERT INTO Patient_card(Pat_FIO, Phone_num, Pat_Card) 
-                        VALUES(?,?,?);""",(
-                            self.textEdit_Pac_Fio.toPlainText(),
-                            self.textEditl_Pac_Num.toPlainText(),
-                            int(self.checkBox_Appointment.isChecked()),))
+        cursor = connection.cursor()
 
-        conn.commit()
-        cur.execute(""" SELECT ID_Pat FROM Patient_card
-                        WHERE Pat_FIO = (?)
-                        AND Phone_num = (?)
-                        AND Pat_Card = (?)""",(
-                                self.textEdit_Pac_Fio.toPlainText(),
-                                self.textEditl_Pac_Num.toPlainText(),
-                                int(self.checkBox_Appointment.isChecked()),))
-        patId = cur.fetchall()
+        requets = """INSERT INTO Patient_card(Pat_FIO, Phone_num, Pat_Card) 
+                                VALUES(%s,%s,%s)"""
+        into = [self.textEdit_Pac_Fio.toPlainText(), self.textEditl_Pac_Num.toPlainText(), int(self.checkBox_Appointment.isChecked())]
+        cursor.execute(requets, into)
 
-        cur.execute(""" Update Appointment set ID_Pat = (?)
-                        WHERE ID_appointment = (?)"""
-                                                                ,(patId[0][0], self.main.dataEditDeliting[4],))
-        conn.commit()
+        connection.commit()
 
-        cur.execute(""" SELECT ID_Pat FROM Appointment
-                        WHERE ID_Pat = (?)"""
-                                                                ,(patId[0][0],))
-        patId = cur.fetchall()
+
+        requets = """ SELECT ID_Pat FROM Patient_card
+                        WHERE Pat_FIO = %s
+                        AND Phone_num = %s
+                        AND Pat_Card = %s"""
+        into = [self.textEdit_Pac_Fio.toPlainText(), self.textEditl_Pac_Num.toPlainText(), int(self.checkBox_Appointment.isChecked())]
+        cursor.execute(requets, into)
+        patId = cursor.fetchall()
+
+        requets = """Update Appointment set ID_Pat = %s
+                        WHERE ID_appointment = %s"""
+        into = [patId[0][0], self.main.dataEditDeliting[4]]
+        cursor.execute(requets, into)
+        connection.commit()
+
+
+        requets = """ SELECT ID_Pat FROM Appointment
+                        WHERE ID_Pat = %s"""
+        into = [patId[0][0]]
+        cursor.execute(requets, into)
+        patId = cursor.fetchall()
 
         self.NoticeDialog = NoticeDialog(self)
         self.NoticeDialog.show()
@@ -628,16 +701,18 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         self.dialog.buttonBox.accepted.connect(self.changePatient)
 
     def changePatient(self):
+
+        cursor = connection.cursor()
+
         self.dialog.close()
 
-        cur.execute(""" Update Patient_card set Pat_FIO  = (?), Phone_num = (?), Pat_Card = (?) 
+        requets = """ Update Patient_card set Pat_FIO  = %s, Phone_num = %s, Pat_Card = %s 
                         WHERE ID_Pat = (SELECT ID_Pat FROM Appointment
-                                        WHERE ID_appointment = (?))"""
-                                                                ,(self.textEdit_Pac_Fio.toPlainText()
-                                                                , self.textEditl_Pac_Num.toPlainText()
-                                                                , int(self.checkBox_Appointment.isChecked())
-                                                                , self.main.dataEditDeliting[4],))
-        conn.commit()
+                                        WHERE ID_appointment = %s)"""
+        into = [self.textEdit_Pac_Fio.toPlainText(), self.textEditl_Pac_Num.toPlainText(), int(self.checkBox_Appointment.isChecked()), self.main.dataEditDeliting[4]]
+        cursor.execute(requets, into)
+        connection.commit()
+
         self.NoticeDialog = NoticeDialog(self)
         self.NoticeDialog.show()
         self.NoticeDialog.label.setText('Данные пациента успешно изменены!')
@@ -652,15 +727,22 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         self.dialog.buttonBox.accepted.connect(self.deletingAppoinment)
         
     def deletingAppoinment(self):
+
+        cursor = connection.cursor()
+
         self.dialog.close()
 
-        cur.execute(""" Update Appointment set ID_Pat = 0 ,appointment_status = 0 
-                        WHERE ID_appointment = (?)""",(self.main.dataEditDeliting[4],))
-        conn.commit()
+        requets = """ Update Appointment set ID_Pat = 1 ,appointment_status = 0 
+                        WHERE ID_appointment = %s"""
+        into = [self.main.dataEditDeliting[4]]
+        cursor.execute(requets, into)
+        connection.commit()
 
-        cur.execute(""" SELECT appointment_status FROM Appointment
-                        WHERE ID_appointment = (?)""",(self.main.dataEditDeliting[4],))
-        check = cur.fetchall()
+        requets = """ SELECT appointment_status FROM Appointment
+                        WHERE ID_appointment = %s"""
+        into = [self.main.dataEditDeliting[4]]
+        cursor.execute(requets, into)
+        check = cursor.fetchall()
 
         self.NoticeDialog = NoticeDialog(self)
         self.NoticeDialog.show()
@@ -688,16 +770,20 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
         self.textEdit_Pac_Fio.setText(self.Num_Fio_Pac[1])
         self.textEditl_Pac_Num.setText(self.Num_Fio_Pac[2])
 
-        cur.execute("""SELECT ID_Pat, Pat_FIO, Phone_num, Pat_Card FROM Patient_card
-            WHERE ID_Pat = (SELECT ID_Pat FROM Appointment 
-                            WHERE ID_appointment = (?));""",(self.main.dataEditDeliting[4],))
-        CurrentData = cur.fetchall()
+        cursor = connection.cursor()
+        
+        requets = """SELECT ID_Pat, Pat_FIO, Phone_num, Pat_Card FROM Patient_card
+                            WHERE ID_Pat = (SELECT ID_Pat FROM Appointment 
+                                            WHERE ID_appointment = %s);"""
+        into = [self.main.dataEditDeliting[4]]
+        cursor.execute(requets, into)
+        CurrentData = cursor.fetchall()
         
         if CurrentData[0][3] == 1:
             self.checkBox_Appointment.setCheckState(2)
         elif CurrentData[0][3] == 0:
             self.checkBox_Appointment.setCheckState(0)
-
+# ↓ ↓ ↓ ↓ ↓ НАЧИНАТЬ ПЕРЕДЕЛЫВАТЬ SQL ЗАПРОСЫ ОТ СЮДА ↓ ↓ ↓ ↓ ↓ 
 class DelDay(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
     def __init__(self, root):
         super().__init__(root)
@@ -1165,27 +1251,30 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.label_weekday.setText(Weekday_Now)
 
     def firstFilling(self):
-        cur.execute("SELECT Spec FROM 'Doc' GROUP BY Spec;")
-        self.dsa = cur.fetchall()
+        cursor = connection.cursor()
+        cursor.execute("SELECT Spec FROM Doc GROUP BY Spec;")
 
-        self.whatYouNeed = [0] + self.dsa
+        self.doc_spec = cursor.fetchall()
+        self.whatYouNeed = [0] + self.doc_spec
         self.whoseScheduleIsThis()
 
     def whoseScheduleIsThis(self):
-        
-        # tempList = [self.whatYouNeed[0]]
-
+        cursor = connection.cursor()
         if self.whatYouNeed[0] == 0:
-            
-            # self.whatYouNeed.pop(0)
 
             self.docFIO = []
             for i in range(len(self.whatYouNeed)-1):
-                cur.execute(""" SELECT Doc_FIO,Spec FROM 'Doc' 
-                                WHERE Spec = (?)
-                                ORDER BY ID_Doc ASC;""",(str(self.whatYouNeed[i+1][0]),))
-                docFioTmp = cur.fetchall()
+
+                request = """ SELECT Doc_FIO , Spec FROM Doc
+                                WHERE Spec = %s
+                                ORDER BY ID_Doc ASC"""
+
+                into = self.whatYouNeed[i+1]
+                cursor.execute(request, into)
+                docFioTmp = cursor.fetchall()
+
                 self.docFIO = self.docFIO + docFioTmp
+                
             self.tableFillSpec()
             
         elif self.whatYouNeed[0] == 1:
@@ -1199,10 +1288,10 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.firstFilling()
 
     def tableFillSpec(self):
+        cursor = connection.cursor()
         self.enableWidget()
         self.tableWidget.clear()
         ourDate = self.label_date.text()
-        
 
         docFIO = self.docFIO
         self.tableWidget.setRowHeight(0, 30)
@@ -1214,20 +1303,19 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
             self.tableWidget.setItem(0, i, QtWidgets.QTableWidgetItem(str(docFIO[i][1])))
             self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(str(docFIO[i][0])))
-            # ↑ 
-            
+           
             # ↓ забиваем ячейки в столбце
             # ↓ запрос на выдачу ID приёмов
-            cur.execute("""SELECT ID_appointment,Time_appointment,appointment_status,ID_Pat FROM Appointment
-            WHERE ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = (?))
-            AND Day_appointment = (?)
-            ORDER BY Time_appointment;""",(str(docFIO[i][0]),ourDate,))
-            # ↓ переформотируем tuple в int/str
+            request = """SELECT ID_appointment,Time_appointment,appointment_status,ID_Pat FROM Appointment
+                            WHERE ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = %s)
+                            AND Day_appointment = %s
+                            ORDER BY Time_appointment;"""
+            into = (docFIO[i][0], ourDate)
+            cursor.execute(request, into)
 
             # ID_appointment,Time_appointment,appointment_status,ID_Pat # 
             #       0               1               2               3   # 
-            CurrentData = cur.fetchall()
-            
+            CurrentData = cursor.fetchall()
             for j in range(len(CurrentData)):
                 self.tableWidget.setRowHeight(j+2, 75)
                 item = QTableWidgetItem()
@@ -1240,17 +1328,21 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     self.tableWidget.setRowCount(len(CurrentData)+2)
                     
                 Pat_ID = CurrentData[j][3]
-                cur.execute("""SELECT Pat_FIO, Phone_num, Pat_Card FROM Patient_card
-                WHERE ID_Pat = (?)""",(Pat_ID,))
                 
-                PatData = cur.fetchall()
-                
+                requets = """SELECT Pat_FIO, Phone_num, Pat_Card FROM Patient_card
+                                WHERE ID_Pat = %s"""
+                into = [Pat_ID]
+                cursor.execute(requets, into)
+                PatData = cursor.fetchall()
+
+
+
                 if PatData[0][2] == 1:
                     item.setText('{0}\n+ {1}\n{2}'.format(CurrentData[j][1], PatData[0][0], PatData[0][1]))
                 elif PatData[0][2] == 0:
                     item.setText('{0}\n- {1}\n{2}'.format(CurrentData[j][1], PatData[0][0], PatData[0][1]))
                 
-
+                
                 appointmentStatusStr = CurrentData[j][2]
                 # ↓ проверка состояния записи, окрашивание ячейки
                 if appointmentStatusStr == 0:
@@ -1273,9 +1365,37 @@ class NoticeDialog(QtWidgets.QDialog, NoticeDialog.Ui_Dialog):
         self.close()
         self.main.close()
         
+class LogWindow(QtWidgets.QMainWindow, LogWindow.Ui_Form):
+    def __init__(self):
+        super().__init__()
+
+        self.setupUi(self) 
+        self.pushButton.clicked.connect(self.authorization)
+    def authorization(self):
+
+
+
+        global connection
+        try:
+            connection = connect(
+                host="localhost",
+                # user=self.lineEdit_username.text(),
+                # password=self.lineEdit_password.text(),
+                user="admin",
+                password="klinika",
+                database="asormo",
+            )
+            self.close()
+            self.MainWindow = MainWindow()
+            self.MainWindow.show()
+        except Error as e:
+            self.pushButton.setText('Неправильный логин или пароль')
+            self.lineEdit_username.clear()
+            self.lineEdit_password.clear()
+
 def main():
     app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow()
+    window = LogWindow()
     window.show()
     app.exec_()
    
