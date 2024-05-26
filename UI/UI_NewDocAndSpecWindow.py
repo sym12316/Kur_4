@@ -15,6 +15,8 @@ class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(500, 320)
+        Form.setMinimumSize(500, 320)
+        Form.setMaximumSize(500, 320)
         self.gridLayoutWidget = QtWidgets.QWidget(Form)
         self.gridLayoutWidget.setGeometry(QtCore.QRect(0, 0, 501, 321))
         self.gridLayoutWidget.setObjectName("gridLayoutWidget")

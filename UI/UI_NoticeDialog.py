@@ -15,11 +15,13 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
         Dialog.resize(320, 175)
+        Dialog.setMinimumSize(320, 175)
+        Dialog.setMaximumSize(320, 175)
         self.label = QtWidgets.QLabel(Dialog)
         self.label.setGeometry(QtCore.QRect(0, 0, 320, 150))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
-        font.setPointSize(14)
+        font.setPointSize(18)
         self.label.setFont(font)
         self.label.setAlignment(QtCore.Qt.AlignCenter)
         self.label.setObjectName("label")
@@ -42,8 +44,7 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", " "))
-        self.label.setText(_translate("Dialog", "Новый врач успешно \n"
-"добавлен!"))
+        self.label.setText(_translate("Dialog", "Новый врач успешно \nдобавлен!"))
         self.pushButton.setText(_translate("Dialog", "OK"))
 
 

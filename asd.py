@@ -30,10 +30,19 @@ try:
     ) as connection:
         global cursor 
         cursor = connection.cursor()
-        requets = """SELECT Spec FROM Doc GROUP BY Spec"""
-        cursor.execute(requets)
-        result = cursor.fetchall()
-        print(result)
+        cursor = connection.cursor()
+        
+        pat_name = "Казакова Ирина Петровна"
+
+        requets = """ SELECT Day_appointment, ID_Doc, ID_Pat FROM Appointment
+                            WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
+                                                WHERE Pat_FIO = %s)
+                            GROUP BY Day_appointment, ID_Doc
+                            ORDER BY Day_appointment ASC"""
+        into = [pat_name]
+        cursor.execute(requets, into)
+        Pac_Data_From = cursor.fetchall()
+        print("\n",Pac_Data_From)
 
 
 
@@ -55,12 +64,11 @@ def asd():
 
     cursor = connection.cursor()
 
+cursor = connection.cursor()
+requets = """ UPDATE Appointment set appointment_status = %s
+                        WHERE ID_appointment = %s"""
+                        into = [appointment_Status, appointment_Id]
+    cursor.execute(requets, into)
+connection.commit()
 
 
-
-requets = """SELECT ID_Pat, Pat_FIO, Phone_num, Pat_Card FROM Patient_card
-                WHERE ID_Pat = (SELECT ID_Pat FROM Appointment 
-                                WHERE ID_appointment = (?));"""
-into = [self.main.dataEditDeliting[4]]
-cursor.execute(requets, into)
-CurrentData = cursor.fetchall()

@@ -15,6 +15,8 @@ class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
         Form.resize(600, 400)
+        Form.setMinimumSize(QtCore.QSize(600, 400))
+        Form.setMaximumSize(QtCore.QSize(600, 400))
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
         font.setPointSize(14)

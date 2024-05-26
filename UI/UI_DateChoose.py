@@ -14,7 +14,9 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_Form(object):
     def setupUi(self, Form):
         Form.setObjectName("Form")
-        Form.resize(650, 400)
+        Form.resize(650, 410)
+        Form.setMinimumSize(QtCore.QSize(650, 410))
+        Form.setMaximumSize(QtCore.QSize(650, 410))
         self.horizontalLayoutWidget = QtWidgets.QWidget(Form)
         self.horizontalLayoutWidget.setGeometry(QtCore.QRect(0, 0, 651, 401))
         self.horizontalLayoutWidget.setObjectName("horizontalLayoutWidget")

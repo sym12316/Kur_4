@@ -15,7 +15,8 @@ class Ui_Dialog(object):
     def setupUi(self, Dialog):
         Dialog.setObjectName("Dialog")
         Dialog.resize(1024, 600)
-        Dialog.setMinimumSize(QtCore.QSize(800, 450))
+        Dialog.setMinimumSize(QtCore.QSize(1024, 600))
+        Dialog.setMaximumSize(QtCore.QSize(1024, 600))
         self.gridLayoutWidget = QtWidgets.QWidget(Dialog)
         self.gridLayoutWidget.setGeometry(QtCore.QRect(10, 0, 1001, 591))
         self.gridLayoutWidget.setObjectName("gridLayoutWidget")

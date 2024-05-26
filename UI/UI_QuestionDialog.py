@@ -16,7 +16,7 @@ class Ui_Dialog(object):
         Dialog.setObjectName("Dialog")
         Dialog.resize(400, 290)
         Dialog.setMinimumSize(QtCore.QSize(400, 290))
-        Dialog.setMaximumSize(QtCore.QSize(600, 390))
+        Dialog.setMaximumSize(QtCore.QSize(400, 290))
         self.gridLayoutWidget = QtWidgets.QWidget(Dialog)
         self.gridLayoutWidget.setGeometry(QtCore.QRect(10, 0, 381, 271))
         self.gridLayoutWidget.setObjectName("gridLayoutWidget")
@@ -28,7 +28,7 @@ class Ui_Dialog(object):
         self.label_Notification = QtWidgets.QLabel(self.gridLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
-        font.setPointSize(14)
+        font.setPointSize(16)
         self.label_Notification.setFont(font)
         self.label_Notification.setAlignment(QtCore.Qt.AlignCenter)
         self.label_Notification.setObjectName("label_Notification")
@@ -36,7 +36,7 @@ class Ui_Dialog(object):
         self.label_Data = QtWidgets.QLabel(self.gridLayoutWidget)
         font = QtGui.QFont()
         font.setFamily("Times New Roman")
-        font.setPointSize(14)
+        font.setPointSize(16)
         self.label_Data.setFont(font)
         self.label_Data.setAlignment(QtCore.Qt.AlignCenter)
         self.label_Data.setObjectName("label_Data")
@@ -56,10 +56,8 @@ class Ui_Dialog(object):
     def retranslateUi(self, Dialog):
         _translate = QtCore.QCoreApplication.translate
         Dialog.setWindowTitle(_translate("Dialog", ""))
-        self.label_Notification.setText(_translate("Dialog", "Вы уверены что хотите изменить \n"
-"статус записи на "))
-        self.label_Data.setText(_translate("Dialog", "Запись:\n"
-""))
+        self.label_Notification.setText(_translate("Dialog", "Вы уверены что хотите изменить \nстатус записи на "))
+        self.label_Data.setText(_translate("Dialog", "Запись:\n"))
 
 
 if __name__ == "__main__":

@@ -109,20 +109,13 @@ class newAppointmentCellWindow(QtWidgets.QMainWindow, newAppointmentCellWindow.U
 
                 self.PacRegistration()
 
-                # else: 
-                #     # self.labelStatus.setText("""Пациент уже присутствует в базе данных.
-                #     #                             \nНе установлен флаг 'Карта существует', продолжить?""")
-                #     # self.PacID = Pac_Data_From_SQL[0][1]
-                #     # self.pushButton_Appointment.clicked.connect(self.PacRegistration)
-                #     self.PacRegistration()
-
             else:
                 if self.checkBox_Appointment.isChecked() == 1:
 
                     requets = """INSERT INTO Patient_card(Pat_FIO, Phone_num, Pat_Card) VALUES(%s,%s,1)"""
                     into = [currentPacFIO, self.textEditl_Pac_Num.toPlainText()]
                     cursor.execute(requets, into)
-                    self.NoticeDialog.label.setText('Добавленна запись для\nсуществующего пациент.')
+                    self.NoticeDialog.label.setText('Добавленна запись для\nсуществующего пациента.')
                 else: 
                     
                     requets = """INSERT INTO Patient_card(Pat_FIO, Phone_num) VALUES(%s,%s)"""
@@ -783,7 +776,7 @@ class EditDelitingWindow(QtWidgets.QMainWindow, EditDelitingWindow.Ui_MainWindow
             self.checkBox_Appointment.setCheckState(2)
         elif CurrentData[0][3] == 0:
             self.checkBox_Appointment.setCheckState(0)
-# ↓ ↓ ↓ ↓ ↓ НАЧИНАТЬ ПЕРЕДЕЛЫВАТЬ SQL ЗАПРОСЫ ОТ СЮДА ↓ ↓ ↓ ↓ ↓ 
+
 class DelDay(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
     def __init__(self, root):
         super().__init__(root)
@@ -794,13 +787,14 @@ class DelDay(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
         self.label_Up.setText('Выберете врача')
         self.label_Down.setText('Введите дату и время в \nформате: дд.мм.гггг чч.мм')
         
-        
-        cur.execute(""" SELECT ID_Doc, Spec, Doc_FIO FROM Doc
-                            ORDER BY ID_Doc""")
-        DocData = cur.fetchall()
+        cursor = connection.cursor()
+        requets = """SELECT ID_Doc, Spec, Doc_FIO FROM Doc
+                            ORDER BY Spec"""
+        cursor.execute(requets)
+        DocData = cursor.fetchall()
         
         for i in range(len(DocData)):
-            text = "{0}. {1} - {2}".format(DocData[i][0], DocData[i][1], DocData[i][2])
+            text = "{0} - {1}".format(DocData[i][1], DocData[i][2])
             self.comboBox.addItem(text)
         self.pushButton_Accept.clicked.connect(self.DelDayCheck)
 
@@ -812,12 +806,17 @@ class DelDay(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
         self.NoticeDialog = NoticeDialog(self)
         self.NoticeDialog.show()
 
+        cursor = connection.cursor()
+
         if len(text) == 2:
-            cur.execute(""" SELECT ID_appointment FROM Appointment
-                                WHERE ID_doc = (?)
-                                AND Day_appointment = (?)
-                                AND Time_appointment = (?)""",(docId[0], text[0], text[1] ,))
-            self.foundAppoinment = cur.fetchall()
+
+            requets = """ SELECT ID_appointment FROM Appointment
+                                WHERE ID_doc = %s
+                                AND Day_appointment = %s
+                                AND Time_appointment = %s"""
+            into = [docId[0], text[0], text[1]]
+            cursor.execute(requets, into)
+            self.foundAppoinment = cursor.fetchall()
 
             if self.foundAppoinment == []:
                 self.NoticeDialog.label.setText('Запись не найдена!')
@@ -839,11 +838,17 @@ class DelDay(QtWidgets.QDialog, DelDocOrDay.Ui_Form):
             self.NoticeDialog.label.setText('Ошибка ввода даты')
     
     def DelAppoinment(self):
-        cur.execute(""" DELETE FROM Appointment
-                                    WHERE ID_appointment = (?)""",(self.foundAppoinment[0][0], ))
-        conn.commit()
+
+        cursor = connection.cursor()
+
+        requets = """DELETE FROM Appointment
+                                    WHERE ID_appointment = %s"""
+        into = [self.foundAppoinment[0][0]]
+        cursor.execute(requets, into)
+        connection.commit()
+
         self.NoticeDialog = NoticeDialog(self)
-        
+        self.MainWindow.whoseScheduleIsThis()
         self.NoticeDialog.show()
         self.NoticeDialog.label.setText('Запись удалена!')
 
@@ -890,6 +895,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         self.pushButtonPatientSearch.clicked.connect(self.onButtonPatientSearch)
 
+
     def onButtonDateChoose(self):
         self.DateChoose = DateChoose(self)
         self.DateChoose.show()
@@ -905,7 +911,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
     def onButtonPatientSearch(self):
         self.PatientSearch = PatientSearch(self)
         self.PatientSearch.show()
-        
+        w
         self.PatientSearch.pushButtonSearch.clicked.connect(lambda: self.patientSearch(self.PatientSearch.textEdit.toPlainText()))
 
     def patientSearch(self,pat_name):
@@ -923,12 +929,17 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.tableWidget.clear()
 
         self.label_date.text()
-        cur.execute(""" SELECT Day_appointment, ID_Doc, ID_Pat FROM Appointment
+
+        cursor = connection.cursor()
+
+        requets = """ SELECT Day_appointment, ID_Doc, ID_Pat FROM Appointment
                             WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
-                                                WHERE Pat_FIO = (?))
-                            GROUP BY Day_appointment, ID_Doc
-                            ORDER BY Day_appointment ASC""",(pat_name,))
-        Pac_Data_From = cur.fetchall()
+                                                WHERE Pat_FIO = %s)
+                            GROUP BY Day_appointment, ID_Doc, ID_Pat
+                            ORDER BY Day_appointment ASC"""
+        into = [pat_name]
+        cursor.execute(requets, into)
+        Pac_Data_From = cursor.fetchall()
         
         Pac_Data_From_SQL=[]
 
@@ -942,25 +953,30 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             item = QTableWidgetItem()
             self.tableWidget.setItem(0, i, QtWidgets.QTableWidgetItem(Pac_Data_From_SQL[i][0]))
 
-            cur.execute(""" SELECT Spec, Doc_FIO, ID_Doc FROM Doc
-                            WHERE ID_Doc = (?)
-                                ORDER BY Spec ASC""",(Pac_Data_From_SQL[i][1],))
-            Doc_Data_From_SQL = cur.fetchall()
+            requets = """ SELECT Spec, Doc_FIO, ID_Doc FROM Doc
+                            WHERE ID_Doc = %s
+                                ORDER BY Spec ASC"""
+            into = [Pac_Data_From_SQL[i][1]]
+            cursor.execute(requets, into)
+            Doc_Data_From_SQL = cursor.fetchall()
+
             self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(str(Doc_Data_From_SQL[0][0])))
             self.tableWidget.setItem(2, i, QtWidgets.QTableWidgetItem(str(Doc_Data_From_SQL[0][1])))
 
             
 
 
-            cur.execute("""SELECT ID_appointment,Time_appointment,appointment_status,ID_Pat FROM Appointment
-                            WHERE ID_Doc = (?)
-                            AND Day_appointment = (?)
-                            AND ID_Pat = (?)
-                            ORDER BY Time_appointment;""",(Doc_Data_From_SQL[0][2], Pac_Data_From_SQL[i][0], Pac_Data_From_SQL[i][2],))
-            
+            requets = """SELECT ID_appointment,Time_appointment,appointment_status,ID_Pat FROM Appointment
+                            WHERE ID_Doc = %s
+                            AND Day_appointment = %s
+                            AND ID_Pat = %s
+                            ORDER BY Time_appointment;"""
+            into = [Doc_Data_From_SQL[0][2], Pac_Data_From_SQL[i][0], Pac_Data_From_SQL[i][2]]
+            cursor.execute(requets, into)
+
+            CurrentData = cursor.fetchall()
             # ID_appointment,Time_appointment,appointment_status,ID_Pat # 
             #       0               1               2               3   # 
-            CurrentData = cur.fetchall()
             
             
             for j in range(len(CurrentData)):
@@ -975,10 +991,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                     self.tableWidget.setRowCount(len(CurrentData)+2)
                     
                 Pat_ID = CurrentData[j][3]
-                cur.execute("""SELECT Pat_FIO, Phone_num, Pat_Card FROM Patient_card
-                WHERE ID_Pat = (?)""",(Pat_ID,))
-                
-                PatData = cur.fetchall()
+                requets = """SELECT Pat_FIO, Phone_num, Pat_Card FROM Patient_card
+                                    WHERE ID_Pat = %s"""
+
+                into = [Pat_ID]
+                cursor.execute(requets, into)
+                PatData = cursor.fetchall()
                 
                 if PatData[0][2] == 1:
                     item.setText('{0}\n+ {1}\n{2}'.format(CurrentData[j][1], PatData[0][0], PatData[0][1]))
@@ -1007,45 +1025,46 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.pushButtonUpdateRes.setEnabled(True)
         self.pushButtonNewDoc.setEnabled(True)
 
-    def onButtonSearchPat(self):
-        pat_name = 'Pat 85'
-        self.tableWidget.clear()
-        cur.execute(""" SELECT Day_appointment FROM Appointment
-                            WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
-                                                WHERE Pat_FIO = (?))
-                            GROUP BY Day_appointment""",(pat_name,))
-        Pac_Data_From_SQL = cur.fetchall()
+    # def onButtonSearchPat(self):
+    #     print("asdasd")
+    #     pat_name = 'Pat 85'
+    #     self.tableWidget.clear()
+    #     cur.execute(""" SELECT Day_appointment FROM Appointment
+    #                         WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
+    #                                             WHERE Pat_FIO = (?))
+    #                         GROUP BY Day_appointment""",(pat_name,))
+    #     Pac_Data_From_SQL = cur.fetchall()
 
-        for i in range(len(Pac_Data_From_SQL)):
-            cur.execute(""" SELECT Time_appointment, ID_Doc FROM Appointment
-                            WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
-                                                WHERE Pat_FIO = (?))
-                            ORDER BY Time_appointment ASC""",(pat_name,))
+    #     for i in range(len(Pac_Data_From_SQL)):
+    #         cur.execute(""" SELECT Time_appointment, ID_Doc FROM Appointment
+    #                         WHERE ID_Pat = (SELECT ID_Pat FROM Patient_card
+    #                                             WHERE Pat_FIO = (?))
+    #                         ORDER BY Time_appointment ASC""",(pat_name,))
             
-            Time_appointment = cur.fetchall()
-
-            
-
-            item2 = QTableWidgetItem()
-            item2.setText(Pac_Data_From_SQL[0][0])
-            self.tableWidget.setItem(0, i, item2)
+    #         Time_appointment = cur.fetchall()
 
             
 
-            for j in range(len(Time_appointment)):
-                item = QTableWidgetItem()
+    #         item2 = QTableWidgetItem()
+    #         item2.setText(Pac_Data_From_SQL[0][0])
+    #         self.tableWidget.setItem(0, i, item2)
+
+            
+
+    #         for j in range(len(Time_appointment)):
+    #             item = QTableWidgetItem()
                  
-                if len(Time_appointment)+2 > self.tableWidget.rowCount():
-                    self.tableWidget.setRowCount(len(Time_appointment)+2)
+    #             if len(Time_appointment)+2 > self.tableWidget.rowCount():
+    #                 self.tableWidget.setRowCount(len(Time_appointment)+2)
 
-                cur.execute(""" SELECT Doc_FIO,Spec FROM Doc
-                            WHERE ID_Doc = (?)""",(Time_appointment[j][1],))
+    #             cur.execute(""" SELECT Doc_FIO,Spec FROM Doc
+    #                         WHERE ID_Doc = (?)""",(Time_appointment[j][1],))
             
-                doc_Fio_Spec = cur.fetchall()
+    #             doc_Fio_Spec = cur.fetchall()
                 
 
-                item.setText('Время - {0}\nВрач - {1}\nСпециальность - {2}'.format(Time_appointment[j][0], doc_Fio_Spec[0][0], doc_Fio_Spec[0][1]))
-                self.tableWidget.setItem(j+2, i, item)
+    #             item.setText('Время - {0}\nВрач - {1}\nСпециальность - {2}'.format(Time_appointment[j][0], doc_Fio_Spec[0][0], doc_Fio_Spec[0][1]))
+    #             self.tableWidget.setItem(j+2, i, item)
 
     def onChooseWhatEdit(self):
         self.ChooseWhatEdit = ChooseWhatEdit()  
@@ -1120,9 +1139,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
             self.Sell_Data_Str = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn() ).text()
             self.Sell_Data_Split_Str = self.Sell_Data_Str.split("\n")  
             
-            if len(self.Sell_Data_Split_Str) < 2:
-                self.pushButtonUpdateRes.setText('Ячейка свободна')  
-            elif self.Sell_Data_Split_Str[1] != '- Свободно':
+            if self.Sell_Data_Split_Str[1] != '- Свободно':
                 self.pushButtonUpdateRes.setText('Записать пациента в ПУСТУЮ\n ячейку')
             else:
                 self.ourDate=self.label_date.text()
@@ -1188,9 +1205,12 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         appointment_Id = self.tableWidget.item(self.tableWidget.currentRow(), self.tableWidget.currentColumn()).statusTip()
 
-        cur.execute(""" UPDATE Appointment set appointment_status = (?)
-                        WHERE ID_appointment = (?)""",(appointment_Status, appointment_Id,))
-        conn.commit()
+        cursor = connection.cursor()
+        requets = """ UPDATE Appointment set appointment_status = %s
+                        WHERE ID_appointment = %s"""
+        into = [appointment_Status, appointment_Id]
+        cursor.execute(requets, into)
+        connection.commit()
         self.whoseScheduleIsThis()
 
     def onButtonNewRes(self):
@@ -1256,6 +1276,7 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
         self.doc_spec = cursor.fetchall()
         self.whatYouNeed = [0] + self.doc_spec
+        
         self.whoseScheduleIsThis()
 
     def whoseScheduleIsThis(self):
@@ -1271,9 +1292,8 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
 
                 into = self.whatYouNeed[i+1]
                 cursor.execute(request, into)
-                docFioTmp = cursor.fetchall()
-
-                self.docFIO = self.docFIO + docFioTmp
+                # docFioTmp = cursor.fetchall()
+                self.docFIO = self.docFIO + cursor.fetchall()
                 
             self.tableFillSpec()
             
@@ -1292,17 +1312,15 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
         self.enableWidget()
         self.tableWidget.clear()
         ourDate = self.label_date.text()
-
-        docFIO = self.docFIO
         self.tableWidget.setRowHeight(0, 30)
         self.tableWidget.setRowHeight(1, 30)
 
-        for i in range(len(docFIO)):
+        for i in range(len(self.docFIO)):
             
-            self.tableWidget.setColumnWidth(i, 200)
-
-            self.tableWidget.setItem(0, i, QtWidgets.QTableWidgetItem(str(docFIO[i][1])))
-            self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(str(docFIO[i][0])))
+            self.tableWidget.setColumnWidth(i, 220)
+            
+            self.tableWidget.setItem(0, i, QtWidgets.QTableWidgetItem(str(self.docFIO[i][1])))
+            self.tableWidget.setItem(1, i, QtWidgets.QTableWidgetItem(str(self.docFIO[i][0])))
            
             # ↓ забиваем ячейки в столбце
             # ↓ запрос на выдачу ID приёмов
@@ -1310,16 +1328,15 @@ class MainWindow(QtWidgets.QMainWindow, MainWindow.Ui_MainWindow):
                             WHERE ID_Doc = (SELECT ID_Doc FROM Doc WHERE Doc_FIO = %s)
                             AND Day_appointment = %s
                             ORDER BY Time_appointment;"""
-            into = (docFIO[i][0], ourDate)
+            into = (self.docFIO[i][0], ourDate)
             cursor.execute(request, into)
 
             # ID_appointment,Time_appointment,appointment_status,ID_Pat # 
             #       0               1               2               3   # 
             CurrentData = cursor.fetchall()
             for j in range(len(CurrentData)):
-                self.tableWidget.setRowHeight(j+2, 75)
                 item = QTableWidgetItem()
-                self.tableWidget.setRowHeight(j+2, 85)
+                self.tableWidget.setRowHeight(j+2, 150)
  
  
                 item.setStatusTip(str (CurrentData[j][0]))
@@ -1379,10 +1396,10 @@ class LogWindow(QtWidgets.QMainWindow, LogWindow.Ui_Form):
         try:
             connection = connect(
                 host="localhost",
-                # user=self.lineEdit_username.text(),
-                # password=self.lineEdit_password.text(),
-                user="admin",
-                password="klinika",
+                user=self.lineEdit_username.text(),
+                password=self.lineEdit_password.text(),
+                # user="admin",
+                # password="klinika",
                 database="asormo",
             )
             self.close()
